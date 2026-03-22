@@ -1,0 +1,99 @@
+@import "tailwindcss";
+@import "tailwindcss/theme" theme(reference);
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  /* Vercel dark palette */
+  --color-background: #000000;
+  --color-foreground: #ededed;
+  --color-muted: #111111;
+  --color-muted-foreground: #888888;
+  --color-border: #222222;
+  --color-primary: #ffffff;
+  --color-primary-foreground: #000000;
+  --color-accent: #0070f3;
+  --color-accent-foreground: #ffffff;
+  --color-card: #0a0a0a;
+  --color-card-foreground: #ededed;
+  --color-destructive: #ee0000;
+  --color-success: #0070f3;
+  --color-warning: #f5a623;
+  --color-ring: #333333;
+  --radius: 0.5rem;
+  --font-sans: "Inter", "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+  }
+}
+
+/* Code blocks */
+pre {
+  background: #0a0a0a !important;
+  border: 1px solid #222 !important;
+  border-radius: 0.5rem !important;
+  padding: 0.75rem 1rem !important;
+  overflow-x: auto;
+  font-size: 0.8rem;
+}
+
+pre code.hljs,
+pre code {
+  background: transparent !important;
+  padding: 0 !important;
+  color: #e1e1e1 !important;
+}
+
+code:not(pre code) {
+  background: #1a1a1a;
+  border: 1px solid #222;
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.85em;
+  color: #e1e1e1;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Markdown table styling */
+.prose table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.8rem;
+}
+.prose th, .prose td {
+  border: 1px solid #222 !important;
+  padding: 0.4rem 0.75rem !important;
+}
+.prose th {
+  background: #111 !important;
+  color: #ededed !important;
+  font-weight: 500;
+}
+.prose td {
+  color: #aaa !important;
+}
+.prose tr:hover td {
+  background: #0a0a0a;
+}

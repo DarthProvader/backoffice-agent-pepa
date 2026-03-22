@@ -29,7 +29,16 @@
       "Bash(curl -s -X POST http://localhost:3001/api/chat -H \"Content-Type: application/json\" -d \"{\"\"message\"\": \"\"Jaké nové klienty máme za Q1 2026? Odkud přišli?\"\"}\")",
       "Read(//c/PV/Coding/backoffice-agent-pepa/**)",
       "Bash(xargs -I{} taskkill //F //PID {})",
-      "Bash(ls /c/PV/Coding/backoffice-agent-pepa/server/*.lock)"
+      "Bash(ls /c/PV/Coding/backoffice-agent-pepa/server/*.lock)",
+      "Bash(bunx create-next-app@latest web --typescript --tailwind --eslint --app --src-dir --no-import-alias --turbopack)",
+      "Bash(kill %1)",
+      "Bash(kill %1 %2)",
+      "Bash(taskkill //F //PID 47800)",
+      "Bash(taskkill //F //PID 52236)",
+      "Bash(git status:*)",
+      "Bash(git rm:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "additionalDirectories": [
       "C:\\PV\\Coding\\backoffice-agent-pepa\\.claude\\skills",

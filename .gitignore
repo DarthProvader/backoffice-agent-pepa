@@ -43,6 +43,11 @@ yarn.lock
 # TypeScript
 *.tsbuildinfo
 
+# Local docs (not in git)
+progress.md
+zadani.txt
+implementation-plan.txt
+
 # Misc
 .vercel
 .turbo
