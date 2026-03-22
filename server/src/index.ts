@@ -5,7 +5,8 @@ import http from "http";
 import { config } from "./utils/config.js";
 import crypto from "crypto";
 import { handleMessage, AgentChunk, clearSession } from "./agent.js";
-import { startScheduler, loadTasks, getTaskResults } from "./scheduler.js";
+import { startScheduler, setTaskCompleteHandler, loadTasks, getTaskResults } from "./scheduler.js";
+import { startTelegramBot, sendNotification } from "./telegram.js";
 
 const app = express();
 app.use(cors({ origin: config.webUrl }));
@@ -50,6 +51,19 @@ app.get("/api/tasks", (_req, res) => {
 // Create HTTP server
 const server = http.createServer(app);
 
+// Retry on EADDRINUSE (tsx watch on Windows: old process may not release port fast enough)
+let retries = 0;
+server.on("error", (err: NodeJS.ErrnoException) => {
+  if (err.code === "EADDRINUSE" && retries < 5) {
+    retries++;
+    console.log(`[Server] Port ${config.port} busy, retry ${retries}/5...`);
+    setTimeout(() => server.listen(config.port), 1000);
+  } else {
+    console.error(`[Server] Fatal: ${err.message}`);
+    process.exit(1);
+  }
+});
+
 // WebSocket server for streaming
 const wss = new WebSocketServer({ server, path: "/ws" });
 
@@ -88,12 +102,34 @@ wss.on("connection", (ws: WebSocket) => {
   });
 });
 
+// Graceful shutdown — wait for server.close() before exiting
+function shutdown() {
+  console.log("\n[Server] Shutting down...");
+  wss.clients.forEach((ws) => ws.close());
+  wss.close();
+  server.close(() => {
+    console.log("[Server] Port released.");
+    process.exit(0);
+  });
+  // Force exit after 2s if close hangs
+  setTimeout(() => process.exit(0), 2000);
+}
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
+
 // Start server
 server.listen(config.port, () => {
   console.log(`Server running on http://localhost:${config.port}`);
   console.log(`WebSocket on ws://localhost:${config.port}/ws`);
   console.log(`Data directory: ${config.dataDir}`);
 
-  // Start scheduler after server is up
+  // Start scheduler + wire notifications to Telegram
+  setTaskCompleteHandler((result) => {
+    const msg = `📋 *${result.taskName}*\n\n${result.response}`;
+    sendNotification(msg);
+  });
   startScheduler();
+
+  // Start Telegram bot
+  startTelegramBot();
 });

@@ -12,6 +12,7 @@ export interface ScheduledTask {
   prompt: string;
   enabled: boolean;
   createdAt: string;
+  createdBy?: string; // userId who created this task — receives notifications
   lastRunAt?: string;
   lastRunStatus?: "success" | "error";
 }
@@ -22,6 +23,7 @@ interface TaskResult {
   timestamp: string;
   status: "success" | "error";
   response: string;
+  createdBy?: string;
 }
 
 const tasksFile = path.join(config.dataDir, "scheduled-tasks", "tasks.json");
@@ -95,6 +97,7 @@ async function executeTask(task: ScheduledTask) {
     taskId: task.id,
     taskName: task.name,
     timestamp: startTime,
+    createdBy: task.createdBy,
     status,
     response,
   };

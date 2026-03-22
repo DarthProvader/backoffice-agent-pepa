@@ -21,7 +21,7 @@ export function clearSession(userId: string) {
 export async function handleMessage(
   userMessage: string,
   onChunk: (chunk: AgentChunk) => void,
-  userId: string = "default"
+  userId: string = "default",
 ): Promise<string> {
   let fullResponse = "";
   const existingSessionId = sessions.get(userId);
@@ -32,7 +32,7 @@ export async function handleMessage(
         type: "preset",
         preset: "claude_code",
         append: `
-Jsi Back Office Operations Agent pro českou realitní firmu.
+Jsi "Pepa" — back office asistent pro českou realitní firmu. Uživatel je tvůj šéf, ty jsi Pepa.
 Odpovídej vždy česky. Databáze je v ${config.dataDir}/backoffice.db.
 Vygenerované soubory ukládej do ${config.dataDir}/outputs/.
 Dnešní datum: ${new Date().toLocaleDateString("cs-CZ", { day: "numeric", month: "long", year: "numeric" })}.
@@ -55,12 +55,7 @@ Dnešní datum: ${new Date().toLocaleDateString("cs-CZ", { day: "numeric", month
         "WebFetch",
         "Skill",
       ],
-      disallowedTools: [
-        "CronCreate",
-        "CronDelete",
-        "CronList",
-        "ToolSearch",
-      ],
+      disallowedTools: ["CronCreate", "CronDelete", "CronList", "ToolSearch"],
       permissionMode: "bypassPermissions",
       allowDangerouslySkipPermissions: true,
       maxTurns: 15,
@@ -92,7 +87,9 @@ Dnešní datum: ${new Date().toLocaleDateString("cs-CZ", { day: "numeric", month
         }
         case "assistant": {
           const inner = msg.message as Record<string, unknown> | undefined;
-          const content = (inner?.content ?? msg.content) as Array<Record<string, unknown>> | undefined;
+          const content = (inner?.content ?? msg.content) as
+            | Array<Record<string, unknown>>
+            | undefined;
           if (!content) break;
           for (const block of content) {
             if (block.type === "text") {
@@ -111,15 +108,18 @@ Dnešní datum: ${new Date().toLocaleDateString("cs-CZ", { day: "numeric", month
         }
         case "user": {
           const inner = msg.message as Record<string, unknown> | undefined;
-          const content = (inner?.content ?? msg.content) as Array<Record<string, unknown>> | undefined;
+          const content = (inner?.content ?? msg.content) as
+            | Array<Record<string, unknown>>
+            | undefined;
           if (!content) break;
           for (const block of content) {
             if (block.type === "tool_result") {
               onChunk({
                 type: "tool_result",
-                content: typeof block.content === "string"
-                  ? block.content
-                  : JSON.stringify(block.content),
+                content:
+                  typeof block.content === "string"
+                    ? block.content
+                    : JSON.stringify(block.content),
               });
             }
           }

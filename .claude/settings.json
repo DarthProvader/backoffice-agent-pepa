@@ -43,7 +43,11 @@
       "Edit(/.claude/skills/backoffice/**)",
       "Bash(taskkill //F //PID 10848)",
       "Bash(taskkill //F //PID 12984)",
-      "Bash(taskkill //F //PID 33480)"
+      "Bash(taskkill //F //PID 33480)",
+      "Bash(taskkill //F //PID 46104)",
+      "Bash(taskkill //F //PID 49964)",
+      "Bash(taskkill //F //PID 22960)",
+      "Bash(sqlite3 /c/PV/Coding/backoffice-agent-pepa/data/backoffice.db \"SELECT count\\(*\\) FROM clients; SELECT count\\(*\\) FROM properties; SELECT count\\(*\\) FROM leads;\")"
     ],
     "additionalDirectories": [
       "C:\\PV\\Coding\\backoffice-agent-pepa\\.claude\\skills",
