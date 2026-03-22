@@ -1,0 +1,834 @@
+# Back Office Operations Agent — Implementační plán v3
+
+**Deadline:** 26. března 2026 (středa, včetně)
+**Stack:** Claude Agent SDK + Next.js + Telegram bot (grammY)
+**Výstup:** Web UI na Vercelu + Telegram bot + demo video
+**Billing:** Anthropic API key (pay-per-token) pro runtime; Max sub pro vývoj v CC
+
+---
+
+## 1. Architektura
+
+```
+┌───────────────────┐       ┌───────────────────┐
+│   Web UI          │       │   Telegram         │
+│   (Next.js)       │       │   (grammY bot)     │
+│   Vercel          │       │   na VPS           │
+│                   │       │                    │
+│ ┌───────────────┐ │       │                    │
+│ │ Chat UI       │ │       │  Pepa píše z       │
+│ │ Dashboard     │ │       │  telefonu          │
+│ │ Scheduled     │ │       │                    │
+│ │ Push notif.   │ │       │                    │
+│ └───────┬───────┘ │       └────────┬───────────┘
+└─────────┼─────────┘                │
+          │ WebSocket / REST         │ grammY
+          └──────────┬───────────────┘
+                     ↓
+┌─────────────────────────────────────────────────────────┐
+│            VPS (Railway / Fly.io / Hetzner)              │
+│                                                          │
+│  ┌────────────────────────────────────────────────────┐  │
+│  │  Node.js server (Express + WS + grammY + node-cron)│  │
+│  │                                                    │  │
+│  │  Endpointy:                                        │  │
+│  │  ├── WS  /ws           → streaming chat            │  │
+│  │  ├── POST /api/chat    → one-shot dotaz            │  │
+│  │  ├── GET  /api/tasks   → scheduled tasks seznam    │  │
+│  │  ├── POST /api/tasks   → vytvořit task             │  │
+│  │  ├── DEL  /api/tasks/:id → smazat task             │  │
+│  │  ├── GET  /api/results → výsledky tasků            │  │
+│  │  ├── GET  /api/stats   → dashboard quick stats     │  │
+│  │  ├── POST /api/push/subscribe → web push sub       │  │
+│  │  └── GET  /api/files/:name → stažení souborů       │  │
+│  │                                                    │  │
+│  │  grammY Telegram bot handler                       │  │
+│  │  node-cron scheduler                               │  │
+│  │                                                    │  │
+│  │  Všechny vstupy (web, telegram, cron)              │  │
+│  │  → stejný handleMessage() → Agent SDK query()      │  │
+│  │  = jeden mozek, sdílený kontext                    │  │
+│  └──────────────────────┬─────────────────────────────┘  │
+│                         ↓                                │
+│  ┌────────────────────────────────────────────────────┐  │
+│  │  Claude Agent SDK runtime                          │  │
+│  │                                                    │  │
+│  │  Built-in tools (automaticky):                     │  │
+│  │  ├── Bash  → SQL dotazy, Python skripty, cURL      │  │
+│  │  ├── Read / Write / Edit → soubory                 │  │
+│  │  ├── WebSearch / WebFetch → scraping, research     │  │
+│  │  ├── Glob / Grep → hledání v datech               │  │
+│  │  └── Skill → automaticky volá skills               │  │
+│  │                                                    │  │
+│  │  MCP servery (připojené):                          │  │
+│  │  ├── Google Calendar (@cocal/google-calendar-mcp)  │  │
+│  │  ├── Gmail MCP server (nebo Resend jako fallback)  │  │
+│  │  └── Web Scraping MCP (volitelně, jinak WebFetch)  │  │
+│  │                                                    │  │
+│  │  Skills (.claude/skills/):                         │  │
+│  │  ├── xlsx/   → Excel reporty, grafy, dashboardy   │  │
+│  │  ├── pptx/   → PowerPoint prezentace              │  │
+│  │  ├── pdf/    → PDF dokumenty a reporty            │  │
+│  │  ├── docx/   → Word dokumenty                     │  │
+│  │  └── backoffice/  → custom skill (DB schéma,      │  │
+│  │                     firemní kontext, instrukce)    │  │
+│  └────────────────────────────────────────────────────┘  │
+│                                                          │
+│  Data (filesystem):                                      │
+│  ├── /data/backoffice.db         (SQLite databáze)       │
+│  ├── /data/listings/             (scraping cache JSON)   │
+│  ├── /data/scheduled-tasks/      (task .md prompty)      │
+│  │   └── tasks.json              (metadata tasků)        │
+│  ├── /data/task-results/         (výsledky běhů)         │
+│  └── /data/outputs/              (vygenerované soubory)  │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Klíčové principy
+- **Žádné custom tools pro data** — agent má Bash a sám si píše SQL dotazy,
+  Python skripty pro vizualizace, cURL příkazy. Stačí mu znát DB schéma.
+- **Skills pro dokumenty** — pre-built skills od Anthropic (xlsx, pptx, pdf, docx)
+  řeší generování souborů. Agent je volá automaticky.
+- **MCP servery pro integrace** — Calendar a Gmail jsou hotové open-source MCP.
+- **Jeden handleMessage()** — web, Telegram i cron tasky volají stejnou funkci.
+  Agent má vždy stejný kontext a schopnosti.
+
+---
+
+## 2. Datový model (SQLite)
+
+Soubor: `/data/backoffice.db`
+Seed skript: `server/scripts/seed-database.ts`
+
+```sql
+-- Klienti firmy
+CREATE TABLE clients (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,            -- "Jan Novák"
+  email TEXT,
+  phone TEXT,                    -- "+420 XXX XXX XXX"
+  source TEXT,                   -- "web","doporuceni","sreality","bezrealitky","telefon"
+  status TEXT DEFAULT 'active',  -- "active","inactive","vip"
+  notes TEXT,
+  created_at DATE,
+  updated_at DATE
+);
+
+-- Nemovitosti v portfoliu
+CREATE TABLE properties (
+  id INTEGER PRIMARY KEY,
+  address TEXT NOT NULL,          -- "Osadní 12, Praha 7"
+  city TEXT DEFAULT 'Praha',
+  district TEXT,                  -- "Holešovice","Vinohrady","Karlín","Dejvice"
+  type TEXT,                      -- "byt","komercni","dum","pozemek"
+  disposition TEXT,               -- "2+kk","3+1","kancelar"
+  area_m2 REAL,
+  price REAL,                     -- v CZK
+  status TEXT,                    -- "v_nabidce","rezervovano","prodano","stazeno"
+  renovation_status TEXT,         -- "po_rekonstrukci","pred_rekonstrukci","castecna",NULL
+  building_modifications TEXT,    -- popis úprav, NULL pokud chybí
+  energy_rating TEXT,             -- "A"-"G", NULL pokud chybí
+  description TEXT,
+  listed_at DATE,
+  sold_at DATE,
+  owner_id INTEGER REFERENCES clients(id)
+);
+
+-- Leady (zájemci o nemovitost)
+CREATE TABLE leads (
+  id INTEGER PRIMARY KEY,
+  client_id INTEGER REFERENCES clients(id),
+  property_id INTEGER REFERENCES properties(id),
+  status TEXT,                    -- "novy","kontaktovan","prohlidka","nabidka","uzavreno","ztracen"
+  source TEXT,
+  notes TEXT,
+  created_at DATE,
+  converted_at DATE
+);
+
+-- Prodeje
+CREATE TABLE sales (
+  id INTEGER PRIMARY KEY,
+  property_id INTEGER REFERENCES properties(id),
+  buyer_id INTEGER REFERENCES clients(id),
+  seller_id INTEGER REFERENCES clients(id),
+  price REAL,                     -- skutečná prodejní cena
+  commission REAL,                -- provize firmy
+  sold_at DATE,
+  notes TEXT
+);
+
+-- Prohlídky nemovitostí
+CREATE TABLE viewings (
+  id INTEGER PRIMARY KEY,
+  property_id INTEGER REFERENCES properties(id),
+  client_id INTEGER REFERENCES clients(id),
+  scheduled_at DATETIME,
+  status TEXT,                    -- "planovana","probehnuta","zrusena"
+  feedback TEXT,
+  created_at DATE
+);
+
+-- Monitoring realitních serverů (výsledky scrapingu)
+CREATE TABLE listing_snapshots (
+  id INTEGER PRIMARY KEY,
+  source TEXT,                    -- "sreality","bezrealitky"
+  external_id TEXT,
+  url TEXT,
+  title TEXT,
+  price REAL,
+  area_m2 REAL,
+  district TEXT,
+  first_seen DATE,
+  last_seen DATE,
+  is_new BOOLEAN DEFAULT 1
+);
+```
+
+### Seed data požadavky
+- 50+ klientů: české jména, rozprostřené za posledních 12 měsíců, různé zdroje
+- 30+ nemovitostí: reálné pražské adresy, různé typy a statusy
+  - Některé záměrně s NULL v renovation_status a building_modifications (pro use case 4)
+- 100+ leadů: různé statusy, konverzní raty, časový rozptyl
+- 20+ prodejů: realistické ceny (2-15M Kč byty, 10-30M komerční)
+- 40+ prohlídek: mix plánovaných, proběhlých, zrušených
+- 15+ listing_snapshots: simulace scrapingu Sreality, některé is_new=1
+
+---
+
+## 3. System prompt / Custom Skill
+
+Soubor: `.claude/skills/backoffice/SKILL.md`
+
+```markdown
+---
+name: backoffice-assistant
+description: >
+  Asistent pro realitní back office. Použij vždy, když uživatel 
+  mluví o klientech, nemovitostech, leadech, prodejích, prohlídkách, 
+  reportech, prezentacích, monitoring trhu, emailech pro zájemce,
+  kalendáři, plánování prohlídek, nebo správě úkolů. Také použij
+  když uživatel žádá analýzy, grafy, statistiky nebo trendy.
+---
+
+# Back Office Operations Agent — Realitní firma
+
+Jsi osobní back office asistent pro českou realitní firmu.
+Pomáháš manažerovi Pepovi s denní agendou.
+
+## Databáze
+
+SQLite databáze: /data/backoffice.db
+
+### Tabulky a sloupce:
+- **clients**: id, name, email, phone, source, status, notes, created_at, updated_at
+- **properties**: id, address, city, district, type, disposition, area_m2, price, 
+  status, renovation_status, building_modifications, energy_rating, description,
+  listed_at, sold_at, owner_id
+- **leads**: id, client_id, property_id, status, source, notes, created_at, converted_at
+- **sales**: id, property_id, buyer_id, seller_id, price, commission, sold_at, notes
+- **viewings**: id, property_id, client_id, scheduled_at, status, feedback, created_at
+- **listing_snapshots**: id, source, external_id, url, title, price, area_m2, 
+  district, first_seen, last_seen, is_new
+
+### Jak dotazovat data:
+```bash
+sqlite3 /data/backoffice.db "SELECT ..."
+```
+
+Pro složitější analýzy napiš Python skript a spusť ho.
+K dispozici jsou: pandas, matplotlib, seaborn, numpy.
+
+## České formátování (dodržuj vždy)
+- Měna: "8 900 000 Kč" (mezery jako oddělovač tisíců)
+- Datum: "24. března 2026"
+- Plocha: "78 m²"
+- Procenta: "34,5 %"
+- Desetinná čárka, ne tečka
+
+## Styl komunikace
+- Vždy česky
+- Stručný, profesionální, přátelský
+- Po každé odpovědi navrhni 1-2 follow-up akce:
+  "Chceš tento graf exportovat do Excel?" / "Mám naplánovat prohlídku?"
+- Při nejistotě se zeptej, nehádat
+- Pokud generuješ soubor, ulož ho do /data/outputs/ a informuj uživatele
+
+## Dokumenty
+- Pro Excel reporty → použij xlsx skill
+- Pro prezentace → použij pptx skill
+- Pro PDF → použij pdf skill
+- Soubory ukládej do /data/outputs/
+
+## Email
+- Při psaní emailu vždy navrhni text a čekej na potvrzení
+- Nikdy neposílej email bez explicitního souhlasu uživatele
+- Používej profesionální ale přátelský tón
+
+## Kalendář
+- Pro kontrolu dostupnosti a plánování prohlídek použij Google Calendar MCP
+- Navrhuj termíny v pracovní době (Po-Pá 9:00-17:00)
+
+## Monitoring trhu
+- Pro scraping Sreality/Bezrealitky použij WebFetch
+- Výsledky porovnávej s tabulkou listing_snapshots
+- Nové nabídky = ty, které nejsou v listing_snapshots nebo mají is_new=1
+
+## Scheduled tasky
+Když uživatel požádá o opakovanou úlohu ("sleduj každé ráno...",
+"každý pátek připrav report...", "připomeň mi v 15:00..."):
+
+1. Vytvoř prompt soubor: /data/scheduled-tasks/{task-id}.md
+   - Detailní instrukce co má task dělat
+   - Kam uložit výsledky
+   - Jak notifikovat uživatele
+2. Zavolej API pro registraci tasku:
+   ```bash
+   curl -X POST http://localhost:3001/api/tasks \
+     -H "Content-Type: application/json" \
+     -d '{"id":"...","name":"...","cron":"0 7 * * *","prompt_file":"...","notify":["telegram","push"]}'
+   ```
+3. Pro připomínky (jednorázové) použij cron pro konkrétní datum/čas
+4. Informuj uživatele o nastavení a frekvenci
+
+Pro zobrazení existujících tasků:
+```bash
+curl http://localhost:3001/api/tasks
+```
+
+Pro smazání:
+```bash
+curl -X DELETE http://localhost:3001/api/tasks/{id}
+```
+```
+
+---
+
+## 4. Struktura projektu
+
+```
+backoffice-agent/
+├── CLAUDE.md                    # Instrukce pro CC při VÝVOJI projektu
+│
+├── server/
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── src/
+│   │   ├── index.ts             # Hlavní entry point: Express + WS + grammY + cron
+│   │   ├── agent.ts             # handleMessage() → Agent SDK query() wrapper
+│   │   ├── telegram.ts          # grammY bot setup a message handler
+│   │   ├── scheduler.ts         # node-cron: načítání tasks.json, registrace jobů
+│   │   ├── notifications.ts     # Dispatcher: Telegram + Web Push + email
+│   │   ├── routes/
+│   │   │   ├── chat.ts          # POST /api/chat, WS /ws
+│   │   │   ├── tasks.ts         # CRUD /api/tasks
+│   │   │   ├── results.ts       # GET /api/results
+│   │   │   ├── stats.ts         # GET /api/stats (dashboard data)
+│   │   │   ├── files.ts         # GET /api/files/:name (stažení outputs)
+│   │   │   └── push.ts          # POST /api/push/subscribe
+│   │   └── utils/
+│   │       ├── db.ts            # SQLite helper (read-only pro stats endpoint)
+│   │       └── config.ts        # Env vars, konstanty
+│   ├── scripts/
+│   │   └── seed-database.ts     # Generování syntetických dat
+│   └── Dockerfile               # Pro deploy na VPS
+│
+├── web/
+│   ├── package.json
+│   ├── next.config.ts
+│   ├── tailwind.config.ts
+│   ├── public/
+│   │   ├── sw.js                # Service worker pro Web Push
+│   │   └── manifest.json        # PWA manifest
+│   ├── app/
+│   │   ├── layout.tsx           # Root layout, fonts, metadata
+│   │   ├── page.tsx             # Hlavní stránka (chat + dashboard)
+│   │   └── globals.css
+│   ├── components/
+│   │   ├── ChatInterface.tsx    # Chat UI: input, messages, streaming
+│   │   ├── MessageBubble.tsx    # Jedna zpráva (markdown, tabulky, grafy, soubory)
+│   │   ├── AgentActivity.tsx    # Pravý panel: tool calls, status
+│   │   ├── Dashboard.tsx        # Quick stats karty
+│   │   ├── ScheduledTasks.tsx   # Seznam tasků, výsledky, akce
+│   │   ├── TaskResult.tsx       # Detail výsledku jednoho běhu
+│   │   ├── InlineChart.tsx      # Recharts wrapper pro inline grafy
+│   │   ├── FileDownload.tsx     # Download button pro vygenerované soubory
+│   │   └── PushPermission.tsx   # UI pro povolení notifikací
+│   ├── hooks/
+│   │   ├── useAgentChat.ts      # WebSocket hook: sendMessage, messages, isLoading
+│   │   ├── useScheduledTasks.ts # Polling /api/tasks + /api/results
+│   │   └── usePushNotifications.ts # Service worker + subscription
+│   └── lib/
+│       └── api.ts               # Fetch helpers pro REST endpointy
+│
+├── data/                        # Na VPS (ne v repu, jen struktura)
+│   ├── backoffice.db
+│   ├── listings/
+│   ├── scheduled-tasks/
+│   │   └── tasks.json
+│   ├── task-results/
+│   └── outputs/
+│
+├── .claude/
+│   └── skills/
+│       ├── backoffice/
+│       │   └── SKILL.md         # Custom skill (viz sekce 3)
+│       ├── xlsx/                # Staženo z github.com/anthropics/skills
+│       ├── pptx/
+│       ├── pdf/
+│       └── docx/
+│
+└── .env.example                 # Šablona env proměnných
+```
+
+---
+
+## 5. Klíčové soubory k implementaci
+
+### 5.1 server/src/agent.ts — jádro
+
+```typescript
+import { query, ClaudeAgentOptions } from "@anthropic-ai/claude-agent-sdk";
+
+interface AgentMessage {
+  type: "text" | "tool_use" | "tool_result" | "thinking" | "done";
+  content: any;
+}
+
+export async function handleMessage(
+  userMessage: string,
+  onChunk: (msg: AgentMessage) => void
+): Promise<void> {
+  for await (const message of query({
+    prompt: userMessage,
+    options: {
+      systemPrompt: {
+        type: "preset",
+        preset: "claude_code",
+        append: fs.readFileSync("./system-prompt.md", "utf-8"),
+      },
+      cwd: "/data",
+      settingSources: ["project"],   // načte .claude/skills/
+      allowedTools: [
+        "Bash", "Read", "Write", "Edit",
+        "Glob", "Grep",
+        "WebSearch", "WebFetch",
+        "Skill",
+      ],
+      permissionMode: "bypassPermissions",
+      mcpServers: {
+        "google-calendar": {
+          command: "npx",
+          args: ["-y", "@cocal/google-calendar-mcp"],
+        },
+        "gmail": {
+          command: "node",
+          args: ["/app/mcp-servers/gmail/index.js"],
+        },
+      },
+      maxTurns: 15,
+      maxBudgetUsd: 0.50,   // safety limit per dotaz
+    },
+  })) {
+    // Parsuj a forwarduj message type do callbacku
+    onChunk(parseAgentMessage(message));
+  }
+}
+```
+
+### 5.2 server/src/telegram.ts — Telegram bot
+
+```typescript
+import { Bot } from "grammy";
+import { handleMessage } from "./agent";
+
+const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
+const ALLOWED_USERS = process.env.TELEGRAM_ALLOWED_USERS?.split(",") || [];
+
+bot.on("message:text", async (ctx) => {
+  // Bezpečnost: jen povolení uživatelé
+  if (!ALLOWED_USERS.includes(String(ctx.from?.id))) return;
+
+  await ctx.reply("⏳ Pracuji na tom...");
+
+  let fullResponse = "";
+  await handleMessage(ctx.message.text, (chunk) => {
+    if (chunk.type === "text") fullResponse += chunk.content;
+  });
+
+  // Telegram max 4096 znaků — rozdělit pokud delší
+  const chunks = splitMessage(fullResponse, 4000);
+  for (const chunk of chunks) {
+    await ctx.reply(chunk, { parse_mode: "Markdown" });
+  }
+
+  // Pokud agent vygeneroval soubory, poslat jako dokumenty
+  const files = findNewOutputFiles();
+  for (const file of files) {
+    await ctx.replyWithDocument(new InputFile(file.path), {
+      caption: file.name,
+    });
+  }
+});
+
+export { bot };
+```
+
+### 5.3 server/src/scheduler.ts — Scheduled tasks
+
+```typescript
+import cron from "node-cron";
+import fs from "fs";
+import { handleMessage } from "./agent";
+import { sendTelegramNotification } from "./notifications";
+import { sendWebPush } from "./notifications";
+
+interface ScheduledTask {
+  id: string;
+  name: string;
+  cron: string;           // "0 7 * * *"
+  promptFile: string;     // "/data/scheduled-tasks/morning-holesovice.md"
+  notify: string[];       // ["telegram", "push", "email"]
+  enabled: boolean;
+  createdAt: string;
+  lastRun?: string;
+  lastResult?: string;
+}
+
+const activeJobs = new Map<string, cron.ScheduledTask>();
+
+export function loadAndStartTasks() {
+  const tasks: ScheduledTask[] = JSON.parse(
+    fs.readFileSync("/data/scheduled-tasks/tasks.json", "utf-8")
+  );
+  for (const task of tasks) {
+    if (task.enabled) registerTask(task);
+  }
+}
+
+export function registerTask(task: ScheduledTask) {
+  const job = cron.schedule(task.cron, async () => {
+    const prompt = fs.readFileSync(task.promptFile, "utf-8");
+    let result = "";
+
+    await handleMessage(prompt, (chunk) => {
+      if (chunk.type === "text") result += chunk.content;
+    });
+
+    // Ulož výsledek
+    const resultFile = `/data/task-results/${task.id}-${Date.now()}.json`;
+    fs.writeFileSync(resultFile, JSON.stringify({
+      taskId: task.id, taskName: task.name,
+      completedAt: new Date().toISOString(),
+      summary: result,
+    }));
+
+    // Notifikace
+    if (task.notify.includes("telegram")) {
+      await sendTelegramNotification(`✅ ${task.name}\n\n${result}`);
+    }
+    if (task.notify.includes("push")) {
+      await sendWebPush({ title: task.name, body: result.slice(0, 200) });
+    }
+  });
+
+  activeJobs.set(task.id, job);
+}
+
+export function removeTask(taskId: string) { /* ... */ }
+export function listTasks(): ScheduledTask[] { /* ... */ }
+```
+
+### 5.4 web/hooks/useAgentChat.ts — Frontend WebSocket hook
+
+```typescript
+import { useState, useCallback, useRef, useEffect } from "react";
+
+interface Message {
+  id: string;
+  role: "user" | "agent";
+  content: string;
+  toolCalls?: ToolCall[];   // pro activity panel
+  files?: FileRef[];         // pro download linky
+  chart?: ChartData;         // pro inline graf
+  timestamp: Date;
+}
+
+export function useAgentChat() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const wsRef = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    const ws = new WebSocket(process.env.NEXT_PUBLIC_WS_URL!);
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      // Zpracuj streaming chunky:
+      // - text → připoj k poslední agent zprávě
+      // - tool_use → přidej do toolCalls
+      // - done → setIsLoading(false)
+    };
+    wsRef.current = ws;
+    return () => ws.close();
+  }, []);
+
+  const sendMessage = useCallback((text: string) => {
+    setMessages((prev) => [...prev, { role: "user", content: text, ... }]);
+    setIsLoading(true);
+    wsRef.current?.send(JSON.stringify({ type: "chat", content: text }));
+  }, []);
+
+  return { messages, isLoading, sendMessage };
+}
+```
+
+---
+
+## 6. Notifikační systém
+
+### Kanály notifikací (od nejvyšší priority):
+
+| Kanál | Kdy | Jak |
+|---|---|---|
+| Telegram | Vždy po scheduled tasku | bot.api.sendMessage() |
+| Web Push | Pokud má uživatel povolené notif. | web-push knihovna + VAPID |
+| In-app (WebSocket) | Pokud je web UI otevřené | ws.send() do připojených klientů |
+| Email | Pokud uživatel nastavil | Gmail/Resend MCP přes agent |
+
+### Flow po dokončení scheduled tasku:
+1. Agent doběhne → výsledek uložen do `/data/task-results/`
+2. Scheduler přečte výsledek
+3. Pošle na Telegram (bot.api.sendMessage s formátovaným textem)
+4. Pošle Web Push (web-push knihovna, payload s title + summary)
+5. Pošle přes WebSocket do připojených web klientů
+6. Volitelně: agent sám pošle email (pokud je v task.notify)
+
+### Web Push setup:
+- VAPID klíče: vygenerovat `web-push generate-vapid-keys`
+- Frontend: service worker `sw.js` + `usePushNotifications` hook
+- Backend: `POST /api/push/subscribe` uloží subscription, `sendWebPush()` odesílá
+- Klik na notifikaci → otevře web UI s výsledky
+
+---
+
+## 7. Den po dni plán
+
+### Den 1 (Ne 22.3.) — Server + Data + Agent + Telegram
+
+**Dopoledne (4h): Projekt + data**
+- [ ] Scaffold monorepo (server/ + web/ + data/ + .claude/skills/)
+- [ ] CLAUDE.md pro vývoj (instrukce pro CC)
+- [ ] Seed skript: vygenerovat realistická česká data (nechat CC napsat)
+- [ ] Spustit seed, ověřit: `sqlite3 data/backoffice.db "SELECT count(*) FROM clients"`
+
+**Odpoledne (4h): Agent SDK server + Telegram**
+- [ ] `server/src/agent.ts` — handleMessage() s Agent SDK query()
+- [ ] `server/src/index.ts` — Express server + WebSocket endpoint
+- [ ] System prompt / SKILL.md s DB schématem a instrukcemi
+- [ ] Vytvořit Telegram bota (@BotFather)
+- [ ] `server/src/telegram.ts` — grammY handler volající handleMessage()
+- [ ] Deploy na VPS (Docker nebo přímo Node.js)
+
+**Večer (2h): Testování**
+- [ ] Z terminálu: "Kolik máme klientů?" → agent napíše SQL, vrátí odpověď
+- [ ] Z Telegramu: stejný dotaz → funguje přes bot
+- [ ] "Vytvoř graf prodejů" → agent napíše Python matplotlib → vrátí obrázek
+- [ ] Ověřit Bash, Read, Write tools fungují
+
+**Výstup dne 1:** Fungující agent odpovídající z terminálu i Telegramu,
+s přístupem k SQLite databázi plné realistických dat.
+
+---
+
+### Den 2 (Po 23.3.) — Integrace + Skills + Scheduling
+
+**Dopoledne (4h): MCP servery**
+- [ ] Google Calendar MCP:
+  - Google Cloud projekt + OAuth credentials
+  - Přidat do mcpServers v agent.ts
+  - Test: "Jaká je moje dostupnost tento týden?"
+- [ ] Gmail nebo Resend MCP:
+  - Gmail: OAuth setup (složitější)
+  - Resend: API key (jednodušší, doporučuji jako default)
+  - Test: "Napiš email zájemci o nemovitost"
+- [ ] Web scraping test:
+  - Přes WebFetch (built-in): agent fetchne Sreality stránku
+  - Test: "Najdi nové nabídky bytů v Holešovicích na Sreality"
+  - Agent uloží do listing_snapshots
+
+**Odpoledne (4h): Skills + Scheduling**
+- [ ] Stáhnout document skills z github.com/anthropics/skills
+  - xlsx/, pptx/, pdf/, docx/ → do .claude/skills/
+- [ ] Nastavit settingSources: ["project"] v agent options
+- [ ] Test skills: "Vytvoř Excel report klientů za Q1 s grafem"
+- [ ] Test skills: "Připrav 3 slidy pro vedení"
+- [ ] Implementovat scheduler.ts (node-cron)
+- [ ] REST endpointy: GET/POST/DELETE /api/tasks
+- [ ] Instrukce v SKILL.md: jak agent vytváří tasky (curl na localhost)
+- [ ] Test: "Sleduj nové nabídky v Holešovicích každé ráno"
+  - Agent vytvoří prompt .md + zavolá POST /api/tasks
+  - Cron job se zaregistruje
+
+**Večer (2h): Notifikace**
+- [ ] notifications.ts — sendTelegramNotification() + sendWebPush()
+- [ ] Propojit se scheduler.ts — po dokončení tasku → notifikace
+- [ ] Test: manuálně spustit task → přijde zpráva na Telegram
+
+**Výstup dne 2:** Agent s kalendářem, emailem, scrapingem, document skills,
+scheduled tasky a Telegram notifikacemi.
+
+---
+
+### Den 3 (Út 24.3.) — Web UI na Vercelu
+
+**Dopoledne (4h): Chat UI**
+- [ ] Next.js layout: sidebar (nav) + hlavní chat oblast + activity panel
+- [ ] ChatInterface.tsx: input, message bubbles, streaming text
+- [ ] MessageBubble.tsx: markdown rendering (react-markdown), tabulky
+- [ ] InlineChart.tsx: Recharts wrapper (agent vrátí data, frontend vykreslí)
+- [ ] FileDownload.tsx: tlačítko pro stažení vygenerovaných souborů
+- [ ] AgentActivity.tsx: pravý panel s tool calls (🔍 SQL, 🐍 Python, 📧 Email)
+- [ ] useAgentChat.ts hook: WebSocket připojení, message state, streaming
+
+**Odpoledne (4h): Dashboard + Push + Scheduled tasks panel**
+- [ ] Dashboard.tsx: quick stats karty (klienti, leady, prodeje, konverzní rate)
+  - Data z GET /api/stats
+- [ ] ScheduledTasks.tsx: seznam tasků + výsledky + akce (spustit/pozastavit/smazat)
+- [ ] TaskResult.tsx: detail posledního běhu
+- [ ] PushPermission.tsx: UI pro povolení Web Push notifikací
+- [ ] sw.js service worker + usePushNotifications hook
+- [ ] VAPID klíče, subscription management
+- [ ] Deploy na Vercel + env variables (VPS_URL, WS_URL, VAPID_PUBLIC_KEY)
+- [ ] CORS konfigurace na VPS serveru
+
+**Večer (2h): Polish**
+- [ ] Tmavý mód (default), barevné schéma (teal/cyan akcenty)
+- [ ] Responsivní design (desktop 3 sloupce, mobil 1 sloupec)
+- [ ] České texty, loading skeletony, error toasty, empty states
+- [ ] Header: logo + název + connection status indikátor
+- [ ] Finální Vercel deploy, ověřit produkční build
+
+**Výstup dne 3:** Kompletní web UI na Vercelu — chat se streamováním,
+dashboard, scheduled tasks panel, web push notifikace.
+
+---
+
+### Den 4 (St 25.3.) — Testování + Video
+
+**Dopoledne (4h): End-to-end test všech 6 use cases**
+
+| # | Use case (ze zadání) | Test web | Test Telegram |
+|---|---|---|---|
+| 1 | "Noví klienti za Q1, odkud přišli, graficky" | ✅ / ❌ | ✅ / ❌ |
+| 2 | "Graf leadů a prodejů za 6 měsíců" | ✅ / ❌ | ✅ / ❌ |
+| 3 | "Email zájemci + termín prohlídky z kalendáře" | ✅ / ❌ | ✅ / ❌ |
+| 4 | "Nemovitosti s chybějícími daty o rekonstrukci" | ✅ / ❌ | ✅ / ❌ |
+| 5 | "Report pro vedení + prezentace 3 slidy" | ✅ / ❌ | ✅ / ❌ |
+| 6 | "Sleduj Holešovice každé ráno" → notifikace | ✅ / ❌ | ✅ / ❌ |
+
+- [ ] Fix nalezené bugy, edge cases
+- [ ] Test scheduled task: vytvořit → spustit → notifikace přijde
+
+**Odpoledne (3h): Demo video (4-5 minut)**
+
+Scénář:
+1. **Intro (30s):** "Back Office agent pro realitní firmu" + architektura diagram
+2. **Web UI (90s):** Dashboard stats → chat dotaz na klienty → inline graf →
+   "připrav Excel report" → download soubor → "najdi chybějící data" → přehled
+3. **Telegram (60s):** Z telefonu: "email zájemci + termín prohlídky" →
+   agent zkontroluje kalendář → navrhne email → "OK pošli" → potvrzení
+4. **Scheduled tasks (60s):** "Sleduj Holešovice každé ráno" → agent nastaví →
+   scheduled tasks panel → spustit teď → push notifikace na telefon →
+   výsledek v chatu
+5. **Pod kapotou (30s):** Activity panel, Agent SDK, MCP, Skills,
+   "agent si sám píše SQL a Python — nemusím předvídat dotazy"
+
+- [ ] Nahrát (OBS / Loom), screen + telefon
+- [ ] Editovat, přidat titulky pokud potřeba
+
+**Večer (1h): Finalizace**
+- [ ] Finální smoke test: Vercel URL + Telegram
+- [ ] README.md v repu
+- [ ] Odevzdávací email: Vercel link + video link + stručný popis
+
+---
+
+## 8. Fallback plány
+
+### Fallback A: OpenClaw (pokud Agent SDK nefunguje)
+
+**Kdy přepnout:** Agent SDK query() je nestabilní, OOM issues, nepodporuje skills.
+**Co se změní:**
+- Runtime: OpenClaw Gateway místo vlastního Node.js serveru
+- Billing: API key (pay-per-token) místo Max sub
+- Telegram: OpenClaw nativní grammY adaptér (nemusíš psát bot)
+- Config: SOUL.md + AGENTS.md místo CLAUDE.md
+- Skills: kompatibilní (SKILL.md formát je stejný)
+- Web UI: OpenClaw WebChat jako základ, nebo vlastní frontend přes Gateway WS
+- Scheduled tasks: OpenClaw heartbeaty a proaktivní chování
+
+### Fallback B: Claude API + tool-use (nejjednodušší)
+
+**Kdy přepnout:** Agent SDK i OpenClaw selhávají, potřebuji rychlé řešení.
+**Co se změní:**
+- Runtime: přímo Anthropic Messages API s tools (ne Agent SDK)
+- Musím definovat vlastní tools (query_database, generate_chart, ...)
+- Agent nemá Bash — flexibilita omezená na předem definované tools
+- Menší wow efekt, ale spolehlivé a předvídatelné
+- Frontend zůstává stejný
+
+---
+
+## 9. Env proměnné
+
+```env
+# server/.env
+ANTHROPIC_API_KEY=sk-ant-...          # Pro Agent SDK runtime
+TELEGRAM_BOT_TOKEN=7123456789:AAH...  # Z @BotFather
+TELEGRAM_ALLOWED_USERS=123456789      # Pepa's Telegram user ID
+GOOGLE_OAUTH_CLIENT_ID=...            # Google Calendar
+GOOGLE_OAUTH_CLIENT_SECRET=...
+RESEND_API_KEY=re_...                 # Nebo Gmail OAuth credentials
+VAPID_PUBLIC_KEY=BIUXugj...           # Web Push (vygenerovat)
+VAPID_PRIVATE_KEY=0sXtuc...
+WEB_URL=https://backoffice-agent.vercel.app  # Pro CORS
+PORT=3001
+
+# web/.env.local
+NEXT_PUBLIC_API_URL=https://vps-url:3001
+NEXT_PUBLIC_WS_URL=wss://vps-url:3001/ws
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=BIUXugj...
+```
+
+---
+
+## 10. Technologie a odkazy
+
+| Komponenta | Technologie | Odkaz |
+|---|---|---|
+| Agent runtime | @anthropic-ai/claude-agent-sdk | npmjs.com/package/@anthropic-ai/claude-agent-sdk |
+| Server | Express + ws + node-cron | expressjs.com |
+| Telegram bot | grammY | grammy.dev |
+| Frontend | Next.js 14+, Tailwind, Recharts | nextjs.org |
+| Markdown rendering | react-markdown | npmjs.com/package/react-markdown |
+| Web Push | web-push | npmjs.com/package/web-push |
+| Kalendář MCP | @cocal/google-calendar-mcp | github.com/nspady/google-calendar-mcp |
+| Email | Resend MCP | resend.com/docs/knowledge-base/mcp-server |
+| Document skills | anthropics/skills | github.com/anthropics/skills |
+| Skills marketplace | SkillHub | skillhub.club |
+| Deploy frontend | Vercel | vercel.com |
+| Deploy backend | Railway / Fly.io | railway.app / fly.io |
+| Databáze | SQLite (better-sqlite3) | npmjs.com/package/better-sqlite3 |
+
+---
+
+## 11. Checklist pro odevzdání (26.3.)
+
+- [ ] **Odkaz na web UI** na Vercelu — funkční, všechny komponenty
+- [ ] **Telegram bot** funguje — odpovídá na dotazy, posílá soubory
+- [ ] **Všech 6 use cases** ze zadání funguje (web + Telegram)
+- [ ] **Scheduled task** demonstrovaný (vytvořit + spustit + notifikace)
+- [ ] **Demo video** (4-5 min) — jasný, s komentářem
+- [ ] **České UI** — texty, formátování, realistická data
+- [ ] **Proaktivní follow-up** — agent navrhuje další kroky po každé odpovědi
+- [ ] Kód na GitHubu s README

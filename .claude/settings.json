@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/PV/Coding/backoffice-agent-pepa -type f \\\\\\(-iname *plan* -o -iname *implementation* \\\\\\))",
+      "Bash(npm view:*)",
+      "WebSearch",
+      "WebFetch(domain:skillhub.club)",
+      "WebFetch(domain:www.sreality.cz)",
+      "WebFetch(domain:www.bezrealitky.cz)",
+      "Read(//c/tmp/**)",
+      "Bash(npm pack:*)",
+      "Bash(mkdir -p claude-sdk-inspect)",
+      "Bash(tar -xzf anthropic-ai-claude-agent-sdk-0.2.81.tgz -C claude-sdk-inspect)",
+      "Read(//tmp/claude-sdk-inspect/package/**)",
+      "Read(//c/tmp/claude-sdk-inspect/package/**)",
+      "Bash(bun --version)",
+      "Bash(bun install:*)",
+      "Bash(bun run:*)",
+      "Bash(sqlite3 /c/PV/Coding/backoffice-agent-pepa/data/backoffice.db \"SELECT name, source, created_at FROM clients WHERE created_at >= ''2026-01-01'' LIMIT 5\")",
+      "Bash(sqlite3 /c/PV/Coding/backoffice-agent-pepa/data/backoffice.db \"SELECT address, district, renovation_status FROM properties WHERE renovation_status IS NULL LIMIT 5\")",
+      "Bash(claude auth:*)",
+      "Bash(claude --version)",
+      "Bash(taskkill //F //FI 'WINDOWTITLE eq tsx*')",
+      "Bash(lsof -ti:3001)",
+      "Bash(xargs kill:*)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //F //PID 57000)",
+      "Bash(curl -s -X POST http://localhost:3001/api/chat -H \"Content-Type: application/json\" -d \"{\"\"message\"\": \"\"Kolik máme klientů celkem?\"\"}\")",
+      "Bash(curl -s -X POST http://localhost:3001/api/chat -H \"Content-Type: application/json\" -d \"{\"\"message\"\": \"\"Jaké nové klienty máme za Q1 2026? Odkud přišli?\"\"}\")",
+      "Read(//c/PV/Coding/backoffice-agent-pepa/**)",
+      "Bash(xargs -I{} taskkill //F //PID {})",
+      "Bash(ls /c/PV/Coding/backoffice-agent-pepa/server/*.lock)"
+    ],
+    "additionalDirectories": [
+      "C:\\PV\\Coding\\backoffice-agent-pepa\\.claude\\skills",
+      "c:\\Users\\vesel\\.claude\\projects\\c--PV-Coding-backoffice-agent-pepa\\memory"
+    ]
+  }
+}
