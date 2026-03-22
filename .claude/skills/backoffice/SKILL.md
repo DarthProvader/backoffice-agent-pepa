@@ -96,23 +96,74 @@ sqlite3 "$DB" "SELECT title, price, area_m2, district, url FROM listing_snapshot
 - Navrhuj termíny v pracovní době (Po-Pá 9:00-17:00)
 
 ## Monitoring trhu
-- Pro scraping Sreality použij jejich API: https://www.sreality.cz/api/cs/v2/estates?category_main_cb=1&category_type_cb=1&locality_region_id=10&per_page=20
-- Výsledky porovnávej s tabulkou listing_snapshots
-- Nové nabídky = ty, které nejsou v listing_snapshots nebo mají is_new=1
-- Pro Bezrealitky použij WebFetch na HTML stránku a parsuj data z Next.js hydration blobu
 
-## Scheduled tasky
+### Sreality API
+Pro vyhledání nabídek na Sreality použij jejich veřejné JSON API:
+```
+https://www.sreality.cz/api/cs/v2/estates?category_main_cb=1&category_type_cb=1&locality_region_id=10&per_page=20
+```
+
+Užitečné parametry:
+- `category_main_cb`: 1=byty, 2=domy, 3=pozemky, 4=komerční
+- `category_type_cb`: 1=prodej, 2=pronájem
+- `locality_region_id`: 10=Praha
+- `locality_district_id`: ID městské části (zjisti z API)
+- `per_page`: počet výsledků (max 60)
+- `czk_price_from` / `czk_price_to`: cenový rozsah
+- `usable_area_from` / `usable_area_to`: plocha m²
+
+Odpověď obsahuje pole `_embedded.estates[]` s: `name`, `price`, `locality`, `gps`, `_links.images`, `hash_id`.
+
+### Postup při monitoringu
+1. Stáhni nabídky přes WebFetch na Sreality API
+2. Pro každou nabídku zkontroluj zda je v `listing_snapshots` (porovnej `external_id` = `hash_id`)
+3. Nové nabídky vlož: `INSERT INTO listing_snapshots (source, external_id, url, title, price, area_m2, district, first_seen, last_seen, is_new) VALUES (...)`
+4. Existující aktualizuj: `UPDATE listing_snapshots SET last_seen = date('now'), price = ... WHERE external_id = ...`
+5. Vrať přehled nových nabídek
+
+### Bezrealitky
+Jako fallback můžeš použít WebFetch na HTML stránku Bezrealitky a parsovat data z Next.js hydration blobu.
+
+## Naplánované úlohy (Scheduler)
+
 Když uživatel požádá o opakovanou úlohu ("sleduj každé ráno...",
 "každý pátek připrav report...", "připomeň mi v 15:00..."):
 
-1. Vytvoř prompt soubor: /data/scheduled-tasks/{task-id}.md
-   - Detailní instrukce co má task dělat
-   - Kam uložit výsledky
-   - Jak notifikovat uživatele
-2. Zavolej API pro registraci tasku:
-   ```bash
-   curl -X POST http://localhost:3001/api/tasks \
-     -H "Content-Type: application/json" \
-     -d '{"id":"...","name":"...","cron":"0 7 * * *","prompt_file":"...","notify":["telegram","push"]}'
-   ```
-3. Informuj uživatele o nastavení a frekvenci
+### Jak vytvořit naplánovanou úlohu
+Přečti aktuální soubor `data/scheduled-tasks/tasks.json` a přidej nový task:
+
+```json
+{
+  "id": "monitor-holesovice",
+  "name": "Monitoring nabídek – Holešovice",
+  "description": "Kontrola nových nabídek bytů v Holešovicích na Sreality",
+  "cronExpression": "0 7 * * *",
+  "prompt": "Zkontroluj nové nabídky bytů v Praze Holešovicích na Sreality API. Porovnej s databází listing_snapshots. Nové nabídky vlož do DB a vytvoř stručný přehled: název, cena, plocha, odkaz. Pokud nejsou žádné nové, napiš 'Žádné nové nabídky.'",
+  "enabled": true,
+  "createdAt": "2026-03-22T10:00:00.000Z"
+}
+```
+
+### Pravidla
+- `id`: kebab-case, unikátní identifikátor
+- `cronExpression`: standardní 5-field cron (minuty hodiny den měsíc denVtýdnu)
+  - `0 7 * * *` = každý den v 7:00
+  - `0 7 * * 1-5` = pracovní dny v 7:00
+  - `0 9 * * 1` = každé pondělí v 9:00
+  - `0 */6 * * *` = každých 6 hodin
+- `prompt`: kompletní instrukce co má agent udělat — bude spuštěn přes handleMessage()
+- `enabled`: true/false pro zapnutí/vypnutí bez smazání
+- Server automaticky detekuje změny v tasks.json a přenačte úlohy
+
+### Jak upravit/smazat úlohu
+- Přečti tasks.json, uprav nebo odeber záznam, zapiš zpět
+- Server sám přenačte změny (watchFile)
+
+### Kam se ukládají výsledky
+Výsledky běhů se ukládají do `data/task-results/{taskId}_{datum}.md`.
+Pro zobrazení posledních výsledků přečti soubory z tohoto adresáře.
+
+### Při vytváření úlohy vždy
+1. Popiš uživateli co jsi nastavil (název, frekvence, co bude task dělat)
+2. Uveď příklad: "Každý den v 7:00 zkontroluju Sreality a pošlu ti přehled"
+3. Nabídni úpravu: "Chceš změnit čas nebo frekvenci?"

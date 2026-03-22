@@ -102,11 +102,10 @@ export function useWebSocket({ url }: UseWebSocketOptions) {
           break;
         }
         case "done": {
+          // Mark ALL streaming messages as done (defensive)
           setMessages((prev) =>
             prev.map((m) =>
-              m.id === currentAssistantId.current
-                ? { ...m, isStreaming: false }
-                : m
+              m.isStreaming ? { ...m, isStreaming: false } : m
             )
           );
           setIsLoading(false);
@@ -168,6 +167,10 @@ export function useWebSocket({ url }: UseWebSocketOptions) {
 
   const clearMessages = useCallback(() => {
     setMessages([]);
+    // Tell server to clear the session too
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "clear" }));
+    }
   }, []);
 
   return { messages, isConnected, isLoading, connect, sendMessage, clearMessages };

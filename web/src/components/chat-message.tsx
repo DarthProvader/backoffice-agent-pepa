@@ -168,9 +168,12 @@ function AssistantMessage({ message }: { message: ChatMessage }) {
       </div>
       <div className="min-w-0">
         {!hasContent && message.isStreaming && (
-          <div className="flex items-center gap-2 text-muted-foreground py-1">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span className="text-sm">Přemýšlím...</span>
+          <div className="flex items-center gap-1.5 py-1">
+            <span className="flex gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" style={{ animationDelay: "0ms" }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" style={{ animationDelay: "150ms" }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" style={{ animationDelay: "300ms" }} />
+            </span>
           </div>
         )}
 
@@ -211,9 +214,13 @@ function AssistantMessage({ message }: { message: ChatMessage }) {
           return null;
         })}
 
-        {/* Streaming cursor */}
+        {/* Streaming indicator */}
         {message.isStreaming && hasContent && (
-          <span className="inline-block w-1.5 h-4 bg-accent animate-pulse ml-0.5 align-text-bottom rounded-sm" />
+          <span className="inline-flex gap-1 ml-1 align-text-bottom">
+            <span className="w-1 h-1 rounded-full bg-accent animate-bounce" style={{ animationDelay: "0ms" }} />
+            <span className="w-1 h-1 rounded-full bg-accent animate-bounce" style={{ animationDelay: "150ms" }} />
+            <span className="w-1 h-1 rounded-full bg-accent animate-bounce" style={{ animationDelay: "300ms" }} />
+          </span>
         )}
       </div>
     </div>
