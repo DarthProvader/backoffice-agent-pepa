@@ -40,6 +40,30 @@ cd web && bun run dev            # Start Next.js dev server
 cd web && bun run build          # Production build
 ```
 
+## Scheduled Tasks (DŮLEŽITÉ)
+Když uživatel chce naplánovat opakovanou úlohu, připomínku, nebo monitoring:
+- NEPOUŽÍVEJ CronCreate, sleep, ani jiné session-only nástroje
+- ZAPIŠ task do souboru `data/scheduled-tasks/tasks.json`
+- Server automaticky detekuje změny a zaregistruje cron job
+
+Formát tasks.json (pole objektů):
+```json
+[
+  {
+    "id": "unikatni-kebab-id",
+    "name": "Popis úlohy",
+    "description": "Detailní popis co a proč",
+    "cronExpression": "0 7 * * *",
+    "prompt": "Instrukce co má agent udělat když se task spustí...",
+    "enabled": true,
+    "createdAt": "2026-03-22T10:00:00.000Z"
+  }
+]
+```
+
+Cron expressions: `0 7 * * *` = denně 7:00, `0 9 * * 1` = pondělí 9:00, `*/30 * * * *` = každých 30 min.
+Výsledky se ukládají do `data/task-results/`.
+
 ## Conventions
 - All user-facing text in Czech
 - Currency: "8 900 000 Kč" (space-separated thousands)

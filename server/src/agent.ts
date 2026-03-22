@@ -55,6 +55,12 @@ Dnešní datum: ${new Date().toLocaleDateString("cs-CZ", { day: "numeric", month
         "WebFetch",
         "Skill",
       ],
+      disallowedTools: [
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "ToolSearch",
+      ],
       permissionMode: "bypassPermissions",
       allowDangerouslySkipPermissions: true,
       maxTurns: 15,

@@ -42,7 +42,8 @@
       "Bash(bun add:*)",
       "Edit(/.claude/skills/backoffice/**)",
       "Bash(taskkill //F //PID 10848)",
-      "Bash(taskkill //F //PID 12984)"
+      "Bash(taskkill //F //PID 12984)",
+      "Bash(taskkill //F //PID 33480)"
     ],
     "additionalDirectories": [
       "C:\\PV\\Coding\\backoffice-agent-pepa\\.claude\\skills",
