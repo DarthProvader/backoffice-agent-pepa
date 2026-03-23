@@ -75,7 +75,8 @@
       "Bash(chmod +x deploy.sh)",
       "Bash(ssh -i /c/PV/Coding/backoffice-agent-pepa/.ssh/id_ed25519 -o StrictHostKeyChecking=no root@187.124.174.23 \"echo ''Connected!'' && uname -a\")",
       "Bash(chmod 600 /c/PV/Coding/backoffice-agent-pepa/.ssh/id_ed25519)",
-      "Bash(ssh-keygen -y -f /c/PV/Coding/backoffice-agent-pepa/.ssh/id_ed25519)"
+      "Bash(ssh-keygen -y -f /c/PV/Coding/backoffice-agent-pepa/.ssh/id_ed25519)",
+      "Bash(ssh root@187.124.174.23 \"curl -fsSL https://get.docker.com | sh\")"
     ],
     "additionalDirectories": [
       "C:\\PV\\Coding\\backoffice-agent-pepa\\.claude\\skills",
