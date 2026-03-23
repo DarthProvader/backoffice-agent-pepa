@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { useAuth } from "@/hooks/useAuth";
 import { ChatMessageBubble } from "@/components/chat-message";
 import { ChatInput } from "@/components/chat-input";
 import { ArtifactPanel } from "@/components/artifact-panel";
@@ -11,7 +13,7 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
-import { Bot, Trash2 } from "lucide-react";
+import { Bot, Trash2, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001/ws";
@@ -32,6 +34,7 @@ function ChatPanel({
   clearMessages,
   scrollRef,
   onArtifactClick,
+  onLogout,
 }: {
   messages: ReturnType<typeof useWebSocket>["messages"];
   isConnected: boolean;
@@ -40,6 +43,7 @@ function ChatPanel({
   clearMessages: () => void;
   scrollRef: React.RefObject<HTMLDivElement | null>;
   onArtifactClick: ReturnType<typeof useWebSocket>["setActiveArtifact"];
+  onLogout: () => void;
 }) {
   return (
     <div className="flex flex-col h-full">
@@ -80,6 +84,15 @@ function ChatPanel({
               </>
             )}
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onLogout}
+            className="text-muted-foreground hover:text-foreground h-7 px-2"
+            title="Odhlásit se"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </Button>
         </div>
       </header>
 
@@ -132,6 +145,8 @@ function ChatPanel({
 }
 
 export default function Home() {
+  const { token, isAuthenticated, isLoading: authLoading, logout } = useAuth();
+  const router = useRouter();
   const {
     messages,
     isConnected,
@@ -141,12 +156,19 @@ export default function Home() {
     connect,
     sendMessage,
     clearMessages,
-  } = useWebSocket({ url: WS_URL });
+  } = useWebSocket({ url: WS_URL, token });
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Auth guard
   useEffect(() => {
-    connect();
-  }, [connect]);
+    if (!authLoading && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (token) connect();
+  }, [token, connect]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -162,7 +184,13 @@ export default function Home() {
     clearMessages,
     scrollRef,
     onArtifactClick: setActiveArtifact,
+    onLogout: logout,
   };
+
+  // Auth loading
+  if (authLoading) {
+    return <div className="h-screen flex items-center justify-center" />;
+  }
 
   // Without artifact: normal centered layout
   if (!activeArtifact) {

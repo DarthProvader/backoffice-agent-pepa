@@ -9,15 +9,30 @@ import crypto from "crypto";
 import { handleMessage, AgentChunk, clearSession } from "./agent.js";
 import { startScheduler, setTaskCompleteHandler, loadTasks, getTaskResults } from "./scheduler.js";
 import { startTelegramBot, sendNotification } from "./telegram.js";
+import { generateToken, verifyToken, authMiddleware } from "./utils/auth.js";
 
 const app = express();
 app.use(cors({ origin: config.webUrl }));
 app.use(express.json());
 
-// Health check
+// Health check (public)
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
+
+// Login (public)
+app.post("/api/auth/login", (req, res) => {
+  const { username, password } = req.body;
+  if (username === config.authUsername && password === config.authPassword) {
+    const token = generateToken(username);
+    res.json({ token, username });
+  } else {
+    res.status(401).json({ error: "Nesprávné přihlašovací údaje" });
+  }
+});
+
+// Protect all other /api routes
+app.use("/api", authMiddleware);
 
 // One-shot chat endpoint (simple REST)
 app.post("/api/chat", async (req, res) => {
@@ -138,9 +153,17 @@ server.on("error", (err: NodeJS.ErrnoException) => {
 // WebSocket server for streaming
 const wss = new WebSocketServer({ server, path: "/ws" });
 
-wss.on("connection", (ws: WebSocket) => {
-  // Each WS connection gets a stable userId
-  const userId = `web-${crypto.randomUUID()}`;
+wss.on("connection", (ws: WebSocket, req) => {
+  // Verify token from query param
+  const url = new URL(req.url || "", `http://${req.headers.host}`);
+  const token = url.searchParams.get("token");
+  const payload = token ? verifyToken(token) : null;
+  if (!payload) {
+    ws.close(4001, "Unauthorized");
+    return;
+  }
+
+  const userId = `web-${payload.username}-${crypto.randomUUID().slice(0, 8)}`;
   console.log(`WebSocket client connected: ${userId}`);
 
   ws.on("message", async (raw: Buffer) => {

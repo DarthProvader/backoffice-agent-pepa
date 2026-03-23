@@ -32,9 +32,10 @@ export interface ChatMessage {
 
 interface UseWebSocketOptions {
   url: string;
+  token: string | null;
 }
 
-export function useWebSocket({ url }: UseWebSocketOptions) {
+export function useWebSocket({ url, token }: UseWebSocketOptions) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -60,8 +61,10 @@ export function useWebSocket({ url }: UseWebSocketOptions) {
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    if (!token) return; // Don't connect without auth
 
-    const ws = new WebSocket(url);
+    const wsUrl = `${url}${url.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}`;
+    const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => setIsConnected(true);
     ws.onclose = () => {
@@ -158,7 +161,7 @@ export function useWebSocket({ url }: UseWebSocketOptions) {
     };
 
     wsRef.current = ws;
-  }, [url, appendEvent]);
+  }, [url, token, appendEvent]);
 
   const sendMessage = useCallback(
     (content: string) => {

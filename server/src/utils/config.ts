@@ -14,4 +14,7 @@ export const config = {
   webUrl: process.env.WEB_URL || "http://localhost:3000",
   dataDir: process.env.DATA_DIR || path.resolve(__dirname, "../../../data"),
   projectRoot: path.resolve(__dirname, "../../../"),
+  authUsername: process.env.AUTH_USERNAME || "pepa",
+  authPassword: process.env.AUTH_PASSWORD || "backoffice2026",
+  authJwtSecret: process.env.AUTH_JWT_SECRET || "change-me-in-production-" + Math.random(),
 };

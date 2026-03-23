@@ -62,7 +62,10 @@
       "Bash(rm -rf /tmp/anthropic-skills)",
       "Bash(ls -la /c/PV/Coding/backoffice-agent-pepa/web/*.*)",
       "Bash(curl -s http://localhost:3001/api/files/preview/report_klienti_Q1_2026.xlsx)",
-      "Bash(curl -s \"http://localhost:3001/api/files/preview/klienti_Q1_2026.xlsx\")"
+      "Bash(curl -s \"http://localhost:3001/api/files/preview/klienti_Q1_2026.xlsx\")",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:api.anthropic.com)"
     ],
     "additionalDirectories": [
       "C:\\PV\\Coding\\backoffice-agent-pepa\\.claude\\skills",
