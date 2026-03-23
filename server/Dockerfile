@@ -46,5 +46,6 @@ RUN cd server && node dist/scripts/seed-database.js 2>/dev/null || true
 
 EXPOSE 3001
 
-# Start server
-CMD ["node", "server/dist/index.js"]
+# Start server from server/ directory (so node_modules resolve works)
+WORKDIR /app/server
+CMD ["node", "dist/index.js"]
