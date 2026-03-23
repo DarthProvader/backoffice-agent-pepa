@@ -47,7 +47,10 @@
       "Bash(taskkill //F //PID 46104)",
       "Bash(taskkill //F //PID 49964)",
       "Bash(taskkill //F //PID 22960)",
-      "Bash(sqlite3 /c/PV/Coding/backoffice-agent-pepa/data/backoffice.db \"SELECT count\\(*\\) FROM clients; SELECT count\\(*\\) FROM properties; SELECT count\\(*\\) FROM leads;\")"
+      "Bash(sqlite3 /c/PV/Coding/backoffice-agent-pepa/data/backoffice.db \"SELECT count\\(*\\) FROM clients; SELECT count\\(*\\) FROM properties; SELECT count\\(*\\) FROM leads;\")",
+      "Bash(grep -r \"xlsx\\\\|pptx\\\\|pdf\\\\|docx\" /c/PV/Coding/backoffice-agent-pepa --include=*.ts --include=*.js --include=*.json)",
+      "Bash(pip list:*)",
+      "WebFetch(domain:api.github.com)"
     ],
     "additionalDirectories": [
       "C:\\PV\\Coding\\backoffice-agent-pepa\\.claude\\skills",

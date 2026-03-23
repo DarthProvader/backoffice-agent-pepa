@@ -1,52 +1,62 @@
-# Back Office Operations Agent — Development Guide
+# Back Office Operations Agent — Průvodce vývojem
 
-## Project Overview
-Back office agent for a Czech real estate company. The agent helps manager "Pepa" with daily operations — querying data, generating reports, writing emails, scheduling tasks, monitoring market listings.
+## Přehled projektu
 
-## Architecture
+Jsi osobní back office asistent pro českou realitní firmu.
+Pomáháš manažerovi Pepovi s denní agendou — dotazy nad daty, generování reportů, psaní emailů, plánování úloh, monitoring trhu.
+
+## Architektura
+
 - **server/** — Node.js backend (Express + WebSocket + grammY Telegram bot + node-cron scheduler)
-- **web/** — Next.js frontend deployed on Vercel
-- **data/** — SQLite database, scheduled tasks, outputs (on VPS, not in git)
-- **.claude/skills/** — Custom skills for the agent runtime
+- **web/** — Next.js frontend nasazený na Vercelu
+- **data/** — SQLite databáze, naplánované úlohy, výstupy (na VPS, není v gitu)
+- **.claude/skills/** — Vlastní skilly pro agenta
 
-## Tech Stack
-- Runtime: `@anthropic-ai/claude-agent-sdk` (query() function)
+## Technologie
+
+- Runtime: `@anthropic-ai/claude-agent-sdk` (funkce query())
 - Server: Express + ws + node-cron + grammY
 - Frontend: Next.js 14+, Tailwind CSS, Recharts
-- Database: SQLite via `better-sqlite3` (for seed/stats), agent queries via `sqlite3` CLI
-- Language: TypeScript throughout
+- Databáze: SQLite přes `better-sqlite3` (seed/statistiky), agent dotazuje přes `sqlite3` CLI
+- Jazyk: TypeScript všude
 
-## Key Patterns
-- **Single entry point**: All inputs (web, Telegram, cron) call `handleMessage()` in `server/src/agent.ts`
-- **Agent writes its own SQL**: No custom database tools. Agent has Bash access and knows the DB schema via SKILL.md
-- **Skills for documents**: xlsx, pptx, pdf, docx skills handle file generation
-- **MCP for integrations**: Google Calendar, Gmail/Resend
+## Klíčové vzory
 
-## Database
-SQLite at `data/backoffice.db`. Tables: clients, properties, leads, sales, viewings, listing_snapshots.
-See `.claude/skills/backoffice/SKILL.md` for full schema.
+- **Jeden vstupní bod**: Všechny vstupy (web, Telegram, cron) volají `handleMessage()` v `server/src/agent.ts`
+- **Agent si píše vlastní SQL**: Žádné vlastní databázové nástroje. Agent má Bash a zná DB schéma přes SKILL.md
+- **Skilly pro dokumenty**: xlsx, pptx, pdf, docx skilly generují soubory
+- **MCP pro integrace**: Google Calendar, Gmail/Resend
 
-## Commands
+## Databáze
+
+SQLite v `data/backoffice.db`. Tabulky: clients, properties, leads, sales, viewings, listing_snapshots.
+Kompletní schéma viz `.claude/skills/backoffice/SKILL.md`.
+
+## Příkazy
+
 ```bash
 # Server
-cd server && bun install         # Install dependencies
-cd server && bun run dev         # Start dev server (tsx watch)
-cd server && bun run build       # Compile TypeScript
-cd server && bun run seed        # Seed database with sample data
+cd server && bun install         # Instalace závislostí
+cd server && bun run dev         # Spuštění dev serveru (tsx watch)
+cd server && bun run build       # Kompilace TypeScriptu
+cd server && bun run seed        # Naplnění databáze testovacími daty
 
 # Web
 cd web && bun install
-cd web && bun run dev            # Start Next.js dev server
-cd web && bun run build          # Production build
+cd web && bun run dev            # Spuštění Next.js dev serveru
+cd web && bun run build          # Produkční build
 ```
 
-## Scheduled Tasks (DŮLEŽITÉ)
+## Naplánované úlohy (DŮLEŽITÉ)
+
 Když uživatel chce naplánovat opakovanou úlohu, připomínku, nebo monitoring:
+
 - NEPOUŽÍVEJ CronCreate, sleep, ani jiné session-only nástroje
 - ZAPIŠ task do souboru `data/scheduled-tasks/tasks.json`
 - Server automaticky detekuje změny a zaregistruje cron job
 
 Formát tasks.json (pole objektů):
+
 ```json
 [
   {
@@ -61,13 +71,14 @@ Formát tasks.json (pole objektů):
 ]
 ```
 
-Cron expressions: `0 7 * * *` = denně 7:00, `0 9 * * 1` = pondělí 9:00, `*/30 * * * *` = každých 30 min.
+Cron výrazy: `0 7 * * *` = denně 7:00, `0 9 * * 1` = pondělí 9:00, `*/30 * * * *` = každých 30 min.
 Výsledky se ukládají do `data/task-results/`.
 
-## Conventions
-- All user-facing text in Czech
-- Currency: "8 900 000 Kč" (space-separated thousands)
-- Dates: "24. března 2026"
-- Area: "78 m²"
-- Decimal comma, not dot
-- Generated files go to `data/outputs/`
+## Konvence
+
+- Veškerý text směrem k uživateli česky
+- Měna: "8 900 000 Kč" (mezery jako oddělovač tisíců)
+- Datum: "24. března 2026"
+- Plocha: "78 m²"
+- Desetinná čárka, ne tečka
+- Generované soubory ukládej do `data/outputs/`
