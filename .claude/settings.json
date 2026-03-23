@@ -50,7 +50,16 @@
       "Bash(sqlite3 /c/PV/Coding/backoffice-agent-pepa/data/backoffice.db \"SELECT count\\(*\\) FROM clients; SELECT count\\(*\\) FROM properties; SELECT count\\(*\\) FROM leads;\")",
       "Bash(grep -r \"xlsx\\\\|pptx\\\\|pdf\\\\|docx\" /c/PV/Coding/backoffice-agent-pepa --include=*.ts --include=*.js --include=*.json)",
       "Bash(pip list:*)",
-      "WebFetch(domain:api.github.com)"
+      "WebFetch(domain:api.github.com)",
+      "Bash(python -m venv .venv)",
+      "Bash(git clone:*)",
+      "Bash(.venv/Scripts/pip install:*)",
+      "Read(//tmp/anthropic-skills/**)",
+      "Bash(cp -r /tmp/anthropic-skills/skills/xlsx .claude/skills/)",
+      "Bash(cp -r /tmp/anthropic-skills/skills/pptx .claude/skills/)",
+      "Bash(cp -r /tmp/anthropic-skills/skills/pdf .claude/skills/)",
+      "Bash(cp -r /tmp/anthropic-skills/skills/docx .claude/skills/)",
+      "Bash(rm -rf /tmp/anthropic-skills)"
     ],
     "additionalDirectories": [
       "C:\\PV\\Coding\\backoffice-agent-pepa\\.claude\\skills",

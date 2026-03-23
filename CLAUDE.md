@@ -24,7 +24,8 @@ Pomáháš manažerovi Pepovi s denní agendou — dotazy nad daty, generování
 
 - **Jeden vstupní bod**: Všechny vstupy (web, Telegram, cron) volají `handleMessage()` v `server/src/agent.ts`
 - **Agent si píše vlastní SQL**: Žádné vlastní databázové nástroje. Agent má Bash a zná DB schéma přes SKILL.md
-- **Skilly pro dokumenty**: xlsx, pptx, pdf, docx skilly generují soubory
+- **Skilly pro dokumenty**: xlsx, pptx, pdf, docx skilly generují soubory (`.claude/skills/`)
+- **Python venv**: pro skripty generující dokumenty použij `.venv/Scripts/python` (Windows) nebo `.venv/bin/python` (Linux)
 - **MCP pro integrace**: Google Calendar, Gmail/Resend
 
 ## Databáze
@@ -82,3 +83,10 @@ Výsledky se ukládají do `data/task-results/`.
 - Plocha: "78 m²"
 - Desetinná čárka, ne tečka
 - Generované soubory ukládej do `data/outputs/`
+
+## Generování dokumentů
+Máš k dispozici skilly pro xlsx, pptx, pdf a docx. Při generování souborů:
+- Používej Python z venv: `.venv/Scripts/python` (Windows) nebo `.venv/bin/python` (Linux)
+- Výstupní soubory ukládej do `data/outputs/`
+- Po vytvoření informuj uživatele o názvu a cestě k souboru
+- Dodržuj české formátování (čárka, Kč, m², české názvy sloupců)

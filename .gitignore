@@ -48,6 +48,15 @@ progress.md
 zadani.txt
 implementation-plan.txt
 
+# Python venv
+.venv/
+
+# Anthropic document skills (proprietární licence)
+.claude/skills/xlsx/
+.claude/skills/pptx/
+.claude/skills/pdf/
+.claude/skills/docx/
+
 # Misc
 .vercel
 .turbo
