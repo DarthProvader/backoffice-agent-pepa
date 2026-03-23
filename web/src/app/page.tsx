@@ -4,37 +4,45 @@ import { useEffect, useRef } from "react";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { ChatMessageBubble } from "@/components/chat-message";
 import { ChatInput } from "@/components/chat-input";
+import { ArtifactPanel } from "@/components/artifact-panel";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, Wifi, WifiOff, Trash2 } from "lucide-react";
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "@/components/ui/resizable";
+import { Bot, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001/ws";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001";
 
 const SUGGESTIONS = [
   "Jaké nové klienty máme za 1. kvartál?",
-  "Vytvoř graf vývoje leadů za posledních 6 měsíců",
+  "Vytvoř Excel report klientů za Q1 2026",
   "Které nemovitosti mají chybějící data o rekonstrukci?",
-  "Shrň výsledky za poslední týden",
+  "Připrav prezentaci se 3 slidy o výsledcích firmy",
 ];
 
-export default function Home() {
-  const { messages, isConnected, isLoading, connect, sendMessage, clearMessages } =
-    useWebSocket({ url: WS_URL });
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    connect();
-  }, [connect]);
-
-  // Auto-scroll to bottom on new messages
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
-
+function ChatPanel({
+  messages,
+  isConnected,
+  isLoading,
+  sendMessage,
+  clearMessages,
+  scrollRef,
+  onArtifactClick,
+}: {
+  messages: ReturnType<typeof useWebSocket>["messages"];
+  isConnected: boolean;
+  isLoading: boolean;
+  sendMessage: (s: string) => void;
+  clearMessages: () => void;
+  scrollRef: React.RefObject<HTMLDivElement | null>;
+  onArtifactClick: ReturnType<typeof useWebSocket>["setActiveArtifact"];
+}) {
   return (
-    <div className="flex flex-col h-screen max-w-4xl mx-auto">
+    <div className="flex flex-col h-full">
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-3 border-b border-border">
         <div className="flex items-center gap-3">
@@ -86,8 +94,8 @@ export default function Home() {
               Ahoj, jak ti mohu pomoci?
             </h2>
             <p className="text-sm text-muted-foreground mb-8 text-center max-w-md">
-              Jsem tvůj back office asistent. Zeptej se mě na klienty, nemovitosti,
-              leady, reporty nebo cokoliv dalšího.
+              Jsem tvůj back office asistent. Zeptej se mě na klienty,
+              nemovitosti, leady, reporty nebo cokoliv dalšího.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
               {SUGGESTIONS.map((s) => (
@@ -105,9 +113,13 @@ export default function Home() {
             </div>
           </div>
         ) : (
-          <div className="py-2">
+          <div className="py-2 max-w-4xl mx-auto">
             {messages.map((msg) => (
-              <ChatMessageBubble key={msg.id} message={msg} />
+              <ChatMessageBubble
+                key={msg.id}
+                message={msg}
+                onArtifactClick={onArtifactClick}
+              />
             ))}
           </div>
         )}
@@ -116,5 +128,66 @@ export default function Home() {
       {/* Input */}
       <ChatInput onSend={sendMessage} disabled={isLoading || !isConnected} />
     </div>
+  );
+}
+
+export default function Home() {
+  const {
+    messages,
+    isConnected,
+    isLoading,
+    activeArtifact,
+    setActiveArtifact,
+    connect,
+    sendMessage,
+    clearMessages,
+  } = useWebSocket({ url: WS_URL });
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    connect();
+  }, [connect]);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const chatProps = {
+    messages,
+    isConnected,
+    isLoading,
+    sendMessage,
+    clearMessages,
+    scrollRef,
+    onArtifactClick: setActiveArtifact,
+  };
+
+  // Without artifact: normal centered layout
+  if (!activeArtifact) {
+    return (
+      <div className="h-screen max-w-4xl mx-auto">
+        <ChatPanel {...chatProps} />
+      </div>
+    );
+  }
+
+  // With artifact: split layout
+  return (
+    <ResizablePanelGroup orientation="horizontal" className="h-screen">
+      <ResizablePanel defaultSize={50} minSize={30}>
+        <ChatPanel {...chatProps} />
+      </ResizablePanel>
+      <ResizableHandle withHandle />
+      <ResizablePanel defaultSize={50} minSize={25}>
+        <ArtifactPanel
+          key={activeArtifact.version}
+          artifact={activeArtifact}
+          onClose={() => setActiveArtifact(null)}
+          apiBase={API_BASE}
+        />
+      </ResizablePanel>
+    </ResizablePanelGroup>
   );
 }

@@ -5,7 +5,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import { cn } from "@/lib/utils";
-import type { ChatMessage, StreamEvent } from "@/hooks/useWebSocket";
+import type { ChatMessage, StreamEvent, Artifact } from "@/hooks/useWebSocket";
+import { FileCard } from "@/components/file-card";
 import {
   Bot,
   User,
@@ -116,11 +117,12 @@ function ToolCallBlock({ event, result }: { event: StreamEvent; result?: StreamE
   );
 }
 
-function AssistantMessage({ message }: { message: ChatMessage }) {
+function AssistantMessage({ message, onArtifactClick }: { message: ChatMessage; onArtifactClick?: (a: Artifact) => void }) {
   // Group events: pair tool_use with following tool_result
   const blocks: Array<
     | { kind: "text"; content: string }
     | { kind: "tool"; call: StreamEvent; result?: StreamEvent }
+    | { kind: "artifact"; artifact: Artifact }
     | { kind: "error"; content: string }
   > = [];
 
@@ -148,6 +150,11 @@ function AssistantMessage({ message }: { message: ChatMessage }) {
       } else if (ev.type === "tool_result") {
         // Orphan result (shouldn't happen normally) — show as tool block
         blocks.push({ kind: "tool", call: ev });
+      } else if (ev.type === "artifact") {
+        try {
+          const artifact = JSON.parse(ev.content) as Artifact;
+          blocks.push({ kind: "artifact", artifact });
+        } catch { /* ignore */ }
       } else if (ev.type === "error") {
         blocks.push({ kind: "error", content: ev.content });
       }
@@ -203,6 +210,17 @@ function AssistantMessage({ message }: { message: ChatMessage }) {
           if (block.kind === "tool") {
             return <ToolCallBlock key={i} event={block.call} result={block.result} />;
           }
+          if (block.kind === "artifact") {
+            return (
+              <FileCard
+                key={i}
+                filename={block.artifact.filename}
+                filetype={block.artifact.filetype}
+                size={block.artifact.size}
+                onClick={() => onArtifactClick?.({ ...block.artifact, version: Date.now() })}
+              />
+            );
+          }
           if (block.kind === "error") {
             return (
               <div key={i} className="flex items-center gap-2 text-destructive text-sm my-2">
@@ -227,7 +245,7 @@ function AssistantMessage({ message }: { message: ChatMessage }) {
   );
 }
 
-export function ChatMessageBubble({ message }: { message: ChatMessage }) {
+export function ChatMessageBubble({ message, onArtifactClick }: { message: ChatMessage; onArtifactClick?: (a: Artifact) => void }) {
   if (message.role === "user") {
     return (
       <div className="py-3 flex justify-end">
@@ -238,5 +256,5 @@ export function ChatMessageBubble({ message }: { message: ChatMessage }) {
     );
   }
 
-  return <AssistantMessage message={message} />;
+  return <AssistantMessage message={message} onArtifactClick={onArtifactClick} />;
 }

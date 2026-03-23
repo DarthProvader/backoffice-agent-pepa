@@ -19,7 +19,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-screen bg-background">
+      <body className="h-screen overflow-hidden bg-background">
         {children}
       </body>
     </html>

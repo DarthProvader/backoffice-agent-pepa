@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import { WebSocketServer, WebSocket } from "ws";
 import http from "http";
+import path from "path";
+import fs from "fs";
 import { config } from "./utils/config.js";
 import crypto from "crypto";
 import { handleMessage, AgentChunk, clearSession } from "./agent.js";
@@ -37,6 +39,75 @@ app.post("/api/chat", async (req, res) => {
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ error: msg });
+  }
+});
+
+// File serving — generated documents from data/outputs/
+app.get("/api/files/:name", (req, res) => {
+  const filename = req.params.name;
+  // Prevent path traversal
+  if (filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
+    res.status(400).json({ error: "Invalid filename" });
+    return;
+  }
+
+  const filepath = path.join(config.dataDir, "outputs", filename);
+  if (!fs.existsSync(filepath)) {
+    res.status(404).json({ error: "File not found" });
+    return;
+  }
+
+  const ext = path.extname(filename).toLowerCase();
+  const mimeTypes: Record<string, string> = {
+    ".pdf": "application/pdf",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".svg": "image/svg+xml",
+    ".csv": "text/csv",
+  };
+
+  const contentType = mimeTypes[ext] || "application/octet-stream";
+  const inline = [".pdf", ".png", ".jpg", ".jpeg", ".svg"].includes(ext);
+
+  res.setHeader("Content-Type", contentType);
+  res.setHeader(
+    "Content-Disposition",
+    `${inline ? "inline" : "attachment"}; filename="${filename}"`
+  );
+  res.sendFile(filepath);
+});
+
+// XLSX/CSV preview — parse server-side, return JSON
+app.get("/api/files/preview/:name", async (req, res) => {
+  const filename = req.params.name;
+  if (filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
+    res.status(400).json({ error: "Invalid filename" });
+    return;
+  }
+
+  const filepath = path.join(config.dataDir, "outputs", filename);
+  if (!fs.existsSync(filepath)) {
+    res.status(404).json({ error: "File not found" });
+    return;
+  }
+
+  try {
+    const XLSXModule = await import("xlsx");
+    const XLSX = XLSXModule.default || XLSXModule;
+    const workbook = XLSX.readFile(filepath);
+    const sheets = workbook.SheetNames.map((name: string) => {
+      const sheet = workbook.Sheets[name];
+      const rows: string[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+      return { name, rows: rows.slice(0, 500) }; // limit rows
+    });
+    res.json({ sheets });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: msg });
   }
 });
@@ -79,6 +150,34 @@ wss.on("connection", (ws: WebSocket) => {
         await handleMessage(data.content, (chunk) => {
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify(chunk));
+
+            // Detect artifact: Write tool targeting data/outputs/
+            // Only trigger for document/image files, not scripts
+            const ARTIFACT_EXTS = new Set([".xlsx", ".pdf", ".pptx", ".docx", ".png", ".jpg", ".jpeg", ".svg", ".csv"]);
+            if (chunk.type === "tool_result" && chunk.content?.includes("outputs")) {
+              const outputsDir = path.join(config.dataDir, "outputs");
+              try {
+                const files = fs.readdirSync(outputsDir)
+                  .filter((f) => ARTIFACT_EXTS.has(path.extname(f).toLowerCase()))
+                  .map((f) => ({ name: f, mtime: fs.statSync(path.join(outputsDir, f)).mtimeMs }))
+                  .sort((a, b) => b.mtime - a.mtime);
+                if (files.length > 0) {
+                  const latest = files[0];
+                  // Only send if file was modified in last 10 seconds (freshly created)
+                  if (Date.now() - latest.mtime < 10000) {
+                    const ext = path.extname(latest.name).slice(1).toLowerCase();
+                    const size = fs.statSync(path.join(outputsDir, latest.name)).size;
+                    ws.send(JSON.stringify({
+                      type: "artifact",
+                      filename: latest.name,
+                      filetype: ext,
+                      path: `/api/files/${encodeURIComponent(latest.name)}`,
+                      size,
+                    }));
+                  }
+                }
+              } catch { /* ignore */ }
+            }
           }
         }, userId);
       } else if (data.type === "clear") {

@@ -5,10 +5,18 @@ import { useCallback, useRef, useState } from "react";
 /** A single event in the assistant's response stream — mirrors Claude Code output */
 export interface StreamEvent {
   id: string;
-  type: "text" | "tool_use" | "tool_result" | "thinking" | "error";
+  type: "text" | "tool_use" | "tool_result" | "thinking" | "error" | "artifact";
   content: string;
   toolName?: string;
   timestamp: Date;
+}
+
+export interface Artifact {
+  filename: string;
+  filetype: string;
+  path: string;
+  size: number;
+  version: number; // timestamp — forces re-render when same file is updated
 }
 
 export interface ChatMessage {
@@ -30,6 +38,7 @@ export function useWebSocket({ url }: UseWebSocketOptions) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const currentAssistantId = useRef<string | null>(null);
 
@@ -97,6 +106,23 @@ export function useWebSocket({ url }: UseWebSocketOptions) {
             id: crypto.randomUUID(),
             type: "thinking",
             content: data.content,
+            timestamp: now,
+          });
+          break;
+        }
+        case "artifact": {
+          const artifact: Artifact = {
+            filename: data.filename,
+            filetype: data.filetype,
+            path: data.path,
+            size: data.size,
+            version: Date.now(),
+          };
+          setActiveArtifact(artifact);
+          appendEvent({
+            id: crypto.randomUUID(),
+            type: "artifact",
+            content: JSON.stringify(artifact),
             timestamp: now,
           });
           break;
@@ -173,5 +199,5 @@ export function useWebSocket({ url }: UseWebSocketOptions) {
     }
   }, []);
 
-  return { messages, isConnected, isLoading, connect, sendMessage, clearMessages };
+  return { messages, isConnected, isLoading, activeArtifact, setActiveArtifact, connect, sendMessage, clearMessages };
 }

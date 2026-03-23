@@ -59,7 +59,10 @@
       "Bash(cp -r /tmp/anthropic-skills/skills/pptx .claude/skills/)",
       "Bash(cp -r /tmp/anthropic-skills/skills/pdf .claude/skills/)",
       "Bash(cp -r /tmp/anthropic-skills/skills/docx .claude/skills/)",
-      "Bash(rm -rf /tmp/anthropic-skills)"
+      "Bash(rm -rf /tmp/anthropic-skills)",
+      "Bash(ls -la /c/PV/Coding/backoffice-agent-pepa/web/*.*)",
+      "Bash(curl -s http://localhost:3001/api/files/preview/report_klienti_Q1_2026.xlsx)",
+      "Bash(curl -s \"http://localhost:3001/api/files/preview/klienti_Q1_2026.xlsx\")"
     ],
     "additionalDirectories": [
       "C:\\PV\\Coding\\backoffice-agent-pepa\\.claude\\skills",

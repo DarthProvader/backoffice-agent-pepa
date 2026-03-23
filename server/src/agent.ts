@@ -61,7 +61,7 @@ NEINSTALUJ žádné Python ani npm balíčky — vše je již nainstalováno.
       disallowedTools: ["CronCreate", "CronDelete", "CronList", "ToolSearch"],
       permissionMode: "bypassPermissions",
       allowDangerouslySkipPermissions: true,
-      maxTurns: 15,
+      maxTurns: 25,
       maxBudgetUsd: 0.5,
     };
 
