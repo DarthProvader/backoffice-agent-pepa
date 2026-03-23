@@ -12,7 +12,7 @@ import { startTelegramBot, sendNotification } from "./telegram.js";
 import { generateToken, verifyToken, authMiddleware } from "./utils/auth.js";
 
 const app = express();
-app.use(cors({ origin: config.webUrl }));
+app.use(cors({ origin: true }));
 app.use(express.json());
 
 // Health check (public)
