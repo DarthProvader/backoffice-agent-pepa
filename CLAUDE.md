@@ -84,6 +84,15 @@ Výsledky se ukládají do `data/task-results/`.
 - Desetinná čárka, ne tečka
 - Generované soubory ukládej do `data/outputs/`
 
+## Google integrace (Gmail + Calendar)
+Pro práci s emailem a kalendářem máš Python skripty v `scripts/`. Spouštěj přes `.venv/Scripts/python scripts/...`.
+- `gmail_send.py` — odeslání emailu (--to, --subject, --body)
+- `gmail_read.py` — čtení/hledání emailů (--query, --unread, --max, --full)
+- `calendar_list.py` — výpis událostí (--days, --date)
+- `calendar_create.py` — vytvoření události (--summary, --start, --end, --location)
+- `calendar_free.py` — volné sloty v daný den (--date)
+Detaily viz `.claude/skills/google/SKILL.md`.
+
 ## Generování dokumentů
 Máš k dispozici skilly pro xlsx, pptx, pdf a docx. Při generování souborů:
 - Používej Python z venv: `.venv/Scripts/python` (Windows) nebo `.venv/bin/python` (Linux)

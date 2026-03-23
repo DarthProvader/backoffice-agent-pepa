@@ -65,7 +65,13 @@
       "Bash(curl -s \"http://localhost:3001/api/files/preview/klienti_Q1_2026.xlsx\")",
       "WebFetch(domain:www.npmjs.com)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:api.anthropic.com)"
+      "WebFetch(domain:api.anthropic.com)",
+      "Edit(/.claude/skills/google/**)",
+      "Bash(.venv/Scripts/python scripts/calendar_list.py --days 7)",
+      "Bash(.venv/Scripts/python scripts/gmail_read.py --max 3)",
+      "Bash(.venv/Scripts/python scripts/gmail_send.py --to \"josef.zizka.bo@gmail.com\" --subject \"Test z Pepa agenta\" --body \"Ahoj, toto je testovaci email odeslan pres Gmail API z Back Office agenta Pepa.\")",
+      "Bash(.venv/Scripts/python scripts/calendar_create.py --summary \"Test prohlidka\" --start \"2026-03-25T14:00\" --end \"2026-03-25T15:00\" --location \"Praha 7, Holesovice\")",
+      "Bash(.venv/Scripts/python scripts/calendar_create.py --summary \"Test prohlidka\" --start \"2026-03-25T14:00:00\" --end \"2026-03-25T15:00:00\" --location \"Praha 7, Holesovice\")"
     ],
     "additionalDirectories": [
       "C:\\PV\\Coding\\backoffice-agent-pepa\\.claude\\skills",
