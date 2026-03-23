@@ -46,6 +46,13 @@ RUN cd server && node dist/scripts/seed-database.js 2>/dev/null || true
 
 EXPOSE 3001
 
+# Create non-root user (bypassPermissions requires non-root)
+RUN useradd -m -s /bin/bash agent && chown -R agent:agent /app
+USER agent
+
+# Workaround for bypassPermissions in container
+ENV IS_SANDBOX=1
+
 # Start server from server/ directory (so node_modules resolve works)
 WORKDIR /app/server
 CMD ["node", "dist/index.js"]
