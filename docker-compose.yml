@@ -1,0 +1,15 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    ports:
+      - "3001:3001"
+    volumes:
+      - app-data:/app/data
+    env_file:
+      - server/.env
+    restart: unless-stopped
+
+volumes:
+  app-data:

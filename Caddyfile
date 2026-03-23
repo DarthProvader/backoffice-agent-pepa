@@ -1,0 +1,4 @@
+# Replace with your domain or use :443 with IP
+api.pepa.example.com {
+    reverse_proxy localhost:3001
+}

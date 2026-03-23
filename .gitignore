@@ -57,6 +57,9 @@ implementation-plan.txt
 .claude/skills/pdf/
 .claude/skills/docx/
 
+# SSH keys
+.ssh/
+
 # Misc
 .vercel
 .turbo
