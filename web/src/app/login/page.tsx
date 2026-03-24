@@ -130,10 +130,10 @@ export default function LoginPage() {
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                {"P\u0159ihla\u0161ov\u00e1n\u00ed..."}
+                {"P\řihla\šov\án\í..."}
               </>
             ) : (
-              "P\u0159ihl\u00e1sit se"
+              "P\řihl\ásit se"
             )}
           </button>
         </form>

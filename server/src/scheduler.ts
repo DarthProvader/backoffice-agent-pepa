@@ -53,7 +53,7 @@ export function loadTasks(): ScheduledTask[] {
   return JSON.parse(fs.readFileSync(tasksFile, "utf-8"));
 }
 
-function saveTasks(tasks: ScheduledTask[]) {
+export function saveTasks(tasks: ScheduledTask[]) {
   ensureDirs();
   fs.writeFileSync(tasksFile, JSON.stringify(tasks, null, 2), "utf-8");
 }

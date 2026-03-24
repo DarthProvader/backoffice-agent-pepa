@@ -10,6 +10,7 @@ import { handleMessage, AgentChunk, clearSession } from "./agent.js";
 import { startScheduler, setTaskCompleteHandler, loadTasks, getTaskResults } from "./scheduler.js";
 import { startTelegramBot, sendNotification } from "./telegram.js";
 import { generateToken, verifyToken, authMiddleware } from "./utils/auth.js";
+import dashboardRouter from "./routes/dashboard.js";
 
 const app = express();
 app.use(cors({ origin: true }));
@@ -33,6 +34,9 @@ app.post("/api/auth/login", (req, res) => {
 
 // Protect all other /api routes
 app.use("/api", authMiddleware);
+
+// Dashboard routes
+app.use("/api", dashboardRouter);
 
 // One-shot chat endpoint (simple REST)
 app.post("/api/chat", async (req, res) => {

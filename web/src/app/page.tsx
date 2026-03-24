@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useAuth } from "@/hooks/useAuth";
+import { AppShell } from "@/components/app-shell";
 import { ChatMessageBubble } from "@/components/chat-message";
 import { ChatInput } from "@/components/chat-input";
 import { ArtifactPanel } from "@/components/artifact-panel";
@@ -13,7 +14,7 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
-import { Bot, Trash2, LogOut } from "lucide-react";
+import { Bot, Trash2, Wifi, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001/ws";
@@ -26,7 +27,7 @@ const SUGGESTIONS = [
   "Připrav prezentaci se 3 slidy o výsledcích firmy",
 ];
 
-function ChatPanel({
+function ChatContent({
   messages,
   isConnected,
   isLoading,
@@ -34,7 +35,6 @@ function ChatPanel({
   clearMessages,
   scrollRef,
   onArtifactClick,
-  onLogout,
 }: {
   messages: ReturnType<typeof useWebSocket>["messages"];
   isConnected: boolean;
@@ -43,58 +43,35 @@ function ChatPanel({
   clearMessages: () => void;
   scrollRef: React.RefObject<HTMLDivElement | null>;
   onArtifactClick: ReturnType<typeof useWebSocket>["setActiveArtifact"];
-  onLogout: () => void;
 }) {
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <header className="flex items-center justify-between px-6 py-3 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-md bg-accent/15 flex items-center justify-center">
-            <Bot className="w-4 h-4 text-accent" />
-          </div>
-          <div>
-            <h1 className="text-sm font-semibold text-foreground">Pepa</h1>
-            <p className="text-[11px] text-muted-foreground">
-              Back Office Agent
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          {messages.length > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearMessages}
-              className="text-muted-foreground hover:text-foreground h-7 px-2"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </Button>
-          )}
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            {isConnected ? (
-              <>
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                Připojeno
-              </>
-            ) : (
-              <>
-                <div className="w-1.5 h-1.5 rounded-full bg-destructive" />
-                Odpojeno
-              </>
-            )}
-          </div>
+      {/* Mini header — connection status + clear */}
+      <div className="flex items-center justify-end px-4 py-2 border-b border-border gap-2">
+        {messages.length > 0 && (
           <Button
             variant="ghost"
             size="sm"
-            onClick={onLogout}
+            onClick={clearMessages}
             className="text-muted-foreground hover:text-foreground h-7 px-2"
-            title="Odhlásit se"
           >
-            <LogOut className="w-3.5 h-3.5" />
+            <Trash2 className="w-3.5 h-3.5" />
           </Button>
+        )}
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          {isConnected ? (
+            <>
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+              Připojeno
+            </>
+          ) : (
+            <>
+              <div className="w-1.5 h-1.5 rounded-full bg-destructive" />
+              Odpojeno
+            </>
+          )}
         </div>
-      </header>
+      </div>
 
       {/* Messages area */}
       <ScrollArea ref={scrollRef} className="flex-1 px-6">
@@ -145,7 +122,7 @@ function ChatPanel({
 }
 
 export default function Home() {
-  const { token, isAuthenticated, isLoading: authLoading, logout } = useAuth();
+  const { token, isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const {
     messages,
@@ -159,7 +136,6 @@ export default function Home() {
   } = useWebSocket({ url: WS_URL, token });
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auth guard
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push("/login");
@@ -176,6 +152,10 @@ export default function Home() {
     }
   }, [messages]);
 
+  if (authLoading) {
+    return <div className="h-screen flex items-center justify-center" />;
+  }
+
   const chatProps = {
     messages,
     isConnected,
@@ -184,38 +164,34 @@ export default function Home() {
     clearMessages,
     scrollRef,
     onArtifactClick: setActiveArtifact,
-    onLogout: logout,
   };
 
-  // Auth loading
-  if (authLoading) {
-    return <div className="h-screen flex items-center justify-center" />;
-  }
-
-  // Without artifact: normal centered layout
+  // Without artifact: normal layout
   if (!activeArtifact) {
     return (
-      <div className="h-screen max-w-4xl mx-auto">
-        <ChatPanel {...chatProps} />
-      </div>
+      <AppShell>
+        <ChatContent {...chatProps} />
+      </AppShell>
     );
   }
 
   // With artifact: split layout
   return (
-    <ResizablePanelGroup orientation="horizontal" className="h-screen">
-      <ResizablePanel defaultSize={50} minSize={30}>
-        <ChatPanel {...chatProps} />
-      </ResizablePanel>
-      <ResizableHandle withHandle />
-      <ResizablePanel defaultSize={50} minSize={25}>
-        <ArtifactPanel
-          key={activeArtifact.version}
-          artifact={activeArtifact}
-          onClose={() => setActiveArtifact(null)}
-          apiBase={API_BASE}
-        />
-      </ResizablePanel>
-    </ResizablePanelGroup>
+    <AppShell>
+      <ResizablePanelGroup orientation="horizontal" className="h-full">
+        <ResizablePanel defaultSize={50} minSize={30}>
+          <ChatContent {...chatProps} />
+        </ResizablePanel>
+        <ResizableHandle withHandle />
+        <ResizablePanel defaultSize={50} minSize={25}>
+          <ArtifactPanel
+            key={activeArtifact.version}
+            artifact={activeArtifact}
+            onClose={() => setActiveArtifact(null)}
+            apiBase={API_BASE}
+          />
+        </ResizablePanel>
+      </ResizablePanelGroup>
+    </AppShell>
   );
 }

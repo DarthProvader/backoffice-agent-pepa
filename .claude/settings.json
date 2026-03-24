@@ -84,11 +84,14 @@
       "Bash(curl -s http://187.124.174.23:3001/api/health)",
       "Bash(curl -s https://srv1522155.hstgr.cloud/api/health)",
       "Bash(npx vercel:*)",
-      "Bash(curl -s -I -X OPTIONS -H \"Origin: https://web-darthprovaders-projects.vercel.app\" -H \"Access-Control-Request-Method: POST\" https://srv1522155.hstgr.cloud/api/auth/login)"
+      "Bash(curl -s -I -X OPTIONS -H \"Origin: https://web-darthprovaders-projects.vercel.app\" -H \"Access-Control-Request-Method: POST\" https://srv1522155.hstgr.cloud/api/auth/login)",
+      "Bash(npx tsc:*)",
+      "Bash(./node_modules/.bin/tsc --noEmit --pretty)"
     ],
     "additionalDirectories": [
       "C:\\PV\\Coding\\backoffice-agent-pepa\\.claude\\skills",
-      "c:\\Users\\vesel\\.claude\\projects\\c--PV-Coding-backoffice-agent-pepa\\memory"
+      "c:\\Users\\vesel\\.claude\\projects\\c--PV-Coding-backoffice-agent-pepa\\memory",
+      "C:\\PV\\Coding\\backoffice-agent-pepa\\web\\src\\components\\dashboard"
     ]
   }
 }
