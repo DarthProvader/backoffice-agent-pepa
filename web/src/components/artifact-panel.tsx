@@ -66,7 +66,11 @@ export function ArtifactPanel({
 
   const handleDownload = async () => {
     try {
-      const res = await fetch(fileUrl);
+      const token = localStorage.getItem("auth_token");
+      const res = await fetch(fileUrl, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

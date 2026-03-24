@@ -37,7 +37,7 @@ Odpovídej vždy česky. Databáze je v ${config.dataDir}/backoffice.db.
 Vygenerované soubory ukládej do ${config.dataDir}/outputs/.
 Dnešní datum: ${new Date().toLocaleDateString("cs-CZ", { day: "numeric", month: "long", year: "numeric" })}.
 Python s nainstalovanými knihovnami (openpyxl, pandas, python-pptx, reportlab, pypdf, python-docx, Pillow, matplotlib): ${config.projectRoot}/.venv/Scripts/python
-PPTX prezentace: použij Node.js knihovnu pptxgenjs (globálně nainstalovaná). Spusť přes: node skript.js
+PPTX prezentace: použij Node.js knihovnu pptxgenjs (v ~/node_modules/pptxgenjs). Spusť přes: node skript.js
 NEINSTALUJ žádné Python ani npm balíčky — vše je již nainstalováno.
 `,
       },

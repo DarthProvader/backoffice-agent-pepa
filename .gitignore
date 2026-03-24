@@ -16,6 +16,8 @@ server/.env
 
 # Data (generated, not in git)
 data/backoffice.db
+data/backoffice.db-shm
+data/backoffice.db-wal
 data/outputs/
 data/task-results/
 data/listings/

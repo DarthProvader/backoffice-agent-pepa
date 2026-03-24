@@ -91,12 +91,26 @@
       "mcp__playwright__browser_take_screenshot",
       "mcp__playwright__browser_snapshot",
       "mcp__playwright__browser_fill_form",
-      "mcp__playwright__browser_click"
+      "mcp__playwright__browser_click",
+      "Bash(ls -la data/outputs/prezentace*)",
+      "Bash(file data/outputs/prezentace*)",
+      "Bash(unzip -l data/outputs/prezentace_tyden_12.pptx)",
+      "Bash(grep -E \"slide[0-9]|Content_Type|\\\\.xml$\")",
+      "Bash(unzip -p data/outputs/prezentace_tyden_12.pptx ppt/presentation.xml)",
+      "Bash(unzip -l data/outputs/q1_vysledky_2026.pptx)",
+      "Bash(unzip -p data/outputs/q1_vysledky_2026.pptx ppt/slides/slide1.xml)",
+      "Read(//c//**)",
+      "Bash(node -e \"console.log\\(JSON.parse\\(require\\(''fs''\\).readFileSync\\(require\\(''os''\\).homedir\\(\\)+''/node_modules/pptxgenjs/package.json''\\)\\).version\\)\")",
+      "Read(//tmp/**)",
+      "Bash(ls -la /c/Users/vesel/AppData/Local/Temp/test_complex*)",
+      "Bash(ls -la C:/tmp/test_complex*)",
+      "Bash(ls -la /c/tmp/test_complex*)"
     ],
     "additionalDirectories": [
       "C:\\PV\\Coding\\backoffice-agent-pepa\\.claude\\skills",
       "c:\\Users\\vesel\\.claude\\projects\\c--PV-Coding-backoffice-agent-pepa\\memory",
-      "C:\\PV\\Coding\\backoffice-agent-pepa\\web\\src\\components\\dashboard"
+      "C:\\PV\\Coding\\backoffice-agent-pepa\\web\\src\\components\\dashboard",
+      "c:\\tmp"
     ]
   }
 }
