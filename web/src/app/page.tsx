@@ -46,8 +46,8 @@ function ChatContent({
 }) {
   return (
     <div className="flex flex-col h-full">
-      {/* Mini header — connection status + clear */}
-      <div className="flex items-center justify-end px-4 py-2 border-b border-border gap-2">
+      {/* Mini header — connection status + clear, matches sidebar header h-[41px] */}
+      <div className="flex items-center justify-end px-4 h-[41px] border-b border-border gap-2">
         {messages.length > 0 && (
           <Button
             variant="ghost"

@@ -61,15 +61,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen">
       <aside
         className={cn(
-          "flex flex-col h-screen bg-card border-r border-border transition-all duration-200",
-          collapsed ? "w-14" : "w-55"
+          "flex flex-col h-screen bg-card border-r border-border transition-all duration-200 shrink-0",
+          collapsed ? "w-14" : "w-[165px]"
         )}
       >
         {/* Header */}
-        <div className="flex items-center gap-2 p-3 border-b border-border">
+        <div className={cn(
+          "flex items-center",
+          collapsed ? "justify-center py-3" : "px-4 gap-2 py-3"
+        )}>
           <button
             onClick={toggle}
-            className="flex items-center justify-center w-8 h-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            className="flex items-center justify-center w-8 h-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors shrink-0"
             title={collapsed ? "Rozbalit" : "Sbalit"}
           >
             {collapsed ? (
@@ -98,12 +101,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 href={item.path}
                 title={collapsed ? item.label : undefined}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 text-sm transition-colors",
+                  "relative flex items-center py-2 text-sm transition-colors",
+                  collapsed ? "justify-center" : "px-4 gap-3",
                   active
-                    ? "bg-muted border-l-2 border-accent text-foreground"
+                    ? "bg-muted text-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 )}
               >
+                {active && (
+                  <span className="absolute left-0 top-1 bottom-1 w-0.5 bg-accent rounded-r" />
+                )}
                 <item.icon size={18} className="shrink-0" />
                 {!collapsed && (
                   <span className="truncate">{item.label}</span>
@@ -114,11 +121,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-border p-2">
+        <div className={cn(
+          "mt-auto pb-7",
+          collapsed ? "flex justify-center" : "px-4"
+        )}>
           <button
             onClick={logout}
             title={collapsed ? "Odhlásit se" : undefined}
-            className="flex items-center gap-3 w-full px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors"
+            className={cn(
+              "flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors",
+              collapsed ? "justify-center" : "gap-3 w-full"
+            )}
           >
             <LogOut size={18} className="shrink-0" />
             {!collapsed && <span>Odhlásit se</span>}
