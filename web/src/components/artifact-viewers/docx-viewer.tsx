@@ -21,7 +21,10 @@ export function DocxViewer({ url }: DocxViewerProps) {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(url);
+        const token = localStorage.getItem("auth_token");
+        const response = await fetch(url, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
         if (!response.ok) throw new Error("Failed to fetch file");
 
         const buffer = await response.arrayBuffer();

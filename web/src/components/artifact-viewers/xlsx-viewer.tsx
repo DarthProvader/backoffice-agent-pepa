@@ -29,7 +29,10 @@ export function XlsxViewer({ url }: XlsxViewerProps) {
 
         // Fetch parsed JSON from server endpoint
         const jsonUrl = url.replace("/api/files/", "/api/files/preview/");
-        const response = await fetch(jsonUrl);
+        const token = localStorage.getItem("auth_token");
+        const response = await fetch(jsonUrl, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
         if (!response.ok) throw new Error("Failed to fetch preview");
 
         const data = await response.json();

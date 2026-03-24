@@ -178,10 +178,11 @@ wss.on("connection", (ws: WebSocket, req) => {
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify(chunk));
 
-            // Detect artifact: Write tool targeting data/outputs/
-            // Only trigger for document/image files, not scripts
+            // Detect artifact: any chunk mentioning outputs/ with a known file extension
             const ARTIFACT_EXTS = new Set([".xlsx", ".pdf", ".pptx", ".docx", ".png", ".jpg", ".jpeg", ".svg", ".csv"]);
-            if (chunk.type === "tool_result" && chunk.content?.includes("outputs")) {
+            const chunkContent = chunk.content || "";
+            const mentionsOutputs = chunkContent.includes("outputs") || chunkContent.includes("output");
+            if ((chunk.type === "tool_result" || chunk.type === "tool_use" || chunk.type === "text") && mentionsOutputs) {
               const outputsDir = path.join(config.dataDir, "outputs");
               try {
                 const files = fs.readdirSync(outputsDir)

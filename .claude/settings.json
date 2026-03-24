@@ -86,7 +86,12 @@
       "Bash(npx vercel:*)",
       "Bash(curl -s -I -X OPTIONS -H \"Origin: https://web-darthprovaders-projects.vercel.app\" -H \"Access-Control-Request-Method: POST\" https://srv1522155.hstgr.cloud/api/auth/login)",
       "Bash(npx tsc:*)",
-      "Bash(./node_modules/.bin/tsc --noEmit --pretty)"
+      "Bash(./node_modules/.bin/tsc --noEmit --pretty)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_fill_form",
+      "mcp__playwright__browser_click"
     ],
     "additionalDirectories": [
       "C:\\PV\\Coding\\backoffice-agent-pepa\\.claude\\skills",
