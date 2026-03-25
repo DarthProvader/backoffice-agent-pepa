@@ -81,6 +81,8 @@ code:not(pre code) {
   border-collapse: collapse;
   width: 100%;
   font-size: 0.8rem;
+  margin-top: 0.75rem !important;
+  margin-bottom: 0.75rem !important;
 }
 .prose th, .prose td {
   border: 1px solid #222 !important;
@@ -96,4 +98,25 @@ code:not(pre code) {
 }
 .prose tr:hover td {
   background: #0a0a0a;
+}
+
+/* Spacing between prose elements */
+.prose p + table,
+.prose table + p,
+.prose p + pre,
+.prose pre + p,
+.prose ul + p,
+.prose p + ul,
+.prose ol + p,
+.prose p + ol {
+  margin-top: 0.75rem !important;
+}
+
+.prose strong {
+  display: inline;
+}
+
+.prose p {
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
 }

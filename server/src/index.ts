@@ -171,14 +171,16 @@ wss.on("connection", (ws: WebSocket, req) => {
     return;
   }
 
-  const userId = `web-${payload.username}-${crypto.randomUUID().slice(0, 8)}`;
-  console.log(`WebSocket client connected: ${userId}`);
+  const defaultUserId = `web-${payload.username}-${crypto.randomUUID().slice(0, 8)}`;
+  console.log(`WebSocket client connected: ${defaultUserId}`);
 
   ws.on("message", async (raw: Buffer) => {
     try {
       const data = JSON.parse(raw.toString());
       if (data.type === "chat" && data.content) {
-        const sentArtifacts = new Set<string>(); // Track artifacts already sent in this message
+        // Use conversationId from client as stable userId (survives WS reconnects)
+        const userId = data.conversationId ? `conv-${data.conversationId}` : defaultUserId;
+        const sentArtifacts = new Set<string>();
         await handleMessage(data.content, (chunk) => {
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify(chunk));
@@ -228,7 +230,7 @@ wss.on("connection", (ws: WebSocket, req) => {
   });
 
   ws.on("close", () => {
-    console.log(`WebSocket client disconnected: ${userId}`);
+    console.log(`WebSocket client disconnected: ${defaultUserId}`);
     // Keep session alive — user might reconnect
   });
 });

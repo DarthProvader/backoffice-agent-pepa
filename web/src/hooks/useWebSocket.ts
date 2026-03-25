@@ -42,6 +42,7 @@ export function useWebSocket({ url, token }: UseWebSocketOptions) {
   const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const currentAssistantId = useRef<string | null>(null);
+  const conversationIdRef = useRef<string>(crypto.randomUUID());
 
   const appendEvent = useCallback(
     (event: StreamEvent, alsoAppendText?: boolean) => {
@@ -189,7 +190,7 @@ export function useWebSocket({ url, token }: UseWebSocketOptions) {
       setMessages((prev) => [...prev, userMsg, assistantMsg]);
       setIsLoading(true);
 
-      wsRef.current.send(JSON.stringify({ type: "chat", content }));
+      wsRef.current.send(JSON.stringify({ type: "chat", content, conversationId: conversationIdRef.current }));
     },
     []
   );
@@ -203,6 +204,8 @@ export function useWebSocket({ url, token }: UseWebSocketOptions) {
   }, []);
 
   const loadConversation = useCallback(async (conversationId: string) => {
+    // Set conversationId so subsequent messages resume this session
+    conversationIdRef.current = conversationId;
     const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001";
     const authToken = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
     try {
@@ -237,10 +240,8 @@ export function useWebSocket({ url, token }: UseWebSocketOptions) {
     setMessages([]);
     setActiveArtifact(null);
     currentAssistantId.current = null;
-    // Tell server to start fresh session
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "clear" }));
-    }
+    // New conversation = new ID
+    conversationIdRef.current = crypto.randomUUID();
   }, []);
 
   return {

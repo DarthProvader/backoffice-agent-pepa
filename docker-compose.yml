@@ -9,6 +9,8 @@ services:
       - app-data:/app/data
     env_file:
       - server/.env
+    environment:
+      - TZ=Europe/Prague
     restart: unless-stopped
 
 volumes:
