@@ -79,7 +79,7 @@ export function startTelegramBot() {
           // We don't stream to Telegram — just collect
         },
         userId
-      );
+      ).promise;
 
       clearInterval(typingInterval);
 

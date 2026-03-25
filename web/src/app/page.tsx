@@ -35,6 +35,7 @@ function ChatContent({
   isLoading,
   sendMessage,
   clearMessages,
+  stopGeneration,
   scrollRef,
   onArtifactClick,
 }: {
@@ -43,6 +44,7 @@ function ChatContent({
   isLoading: boolean;
   sendMessage: (s: string) => void;
   clearMessages: () => void;
+  stopGeneration: () => void;
   scrollRef: React.RefObject<HTMLDivElement | null>;
   onArtifactClick: ReturnType<typeof useWebSocket>["setActiveArtifact"];
 }) {
@@ -118,7 +120,7 @@ function ChatContent({
       </ScrollArea>
 
       {/* Input */}
-      <ChatInput onSend={sendMessage} disabled={isLoading || !isConnected} />
+      <ChatInput onSend={sendMessage} onStop={stopGeneration} disabled={!isConnected} isLoading={isLoading} />
     </div>
   );
 }
@@ -137,6 +139,7 @@ export default function Home() {
     clearMessages,
     loadConversation,
     newConversation,
+    stopGeneration,
   } = useWebSocket({ url: WS_URL, token });
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -179,6 +182,7 @@ export default function Home() {
     isLoading,
     sendMessage,
     clearMessages,
+    stopGeneration,
     scrollRef,
     onArtifactClick: setActiveArtifact,
   };

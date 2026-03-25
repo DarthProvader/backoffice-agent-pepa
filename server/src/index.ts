@@ -54,7 +54,7 @@ app.post("/api/chat", async (req, res) => {
     const chunks: AgentChunk[] = [];
     const fullResponse = await handleMessage(message, (chunk) => {
       chunks.push(chunk);
-    }, userId);
+    }, userId).promise;
 
     res.json({
       response: fullResponse,
@@ -174,6 +174,9 @@ wss.on("connection", (ws: WebSocket, req) => {
   const defaultUserId = `web-${payload.username}-${crypto.randomUUID().slice(0, 8)}`;
   console.log(`WebSocket client connected: ${defaultUserId}`);
 
+  // Track active agent handle per connection for abort
+  let activeHandle: ReturnType<typeof handleMessage> | null = null;
+
   ws.on("message", async (raw: Buffer) => {
     try {
       const data = JSON.parse(raw.toString());
@@ -181,11 +184,11 @@ wss.on("connection", (ws: WebSocket, req) => {
         // Use conversationId from client as stable userId (survives WS reconnects)
         const userId = data.conversationId ? `conv-${data.conversationId}` : defaultUserId;
         const sentArtifacts = new Set<string>();
-        await handleMessage(data.content, (chunk) => {
+        const handle = handleMessage(data.content, (chunk) => {
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify(chunk));
 
-            // Detect artifact: check outputs dir after every tool_result (agent may have created a file)
+            // Detect artifact: check outputs dir after every tool_result
             const ARTIFACT_EXTS = new Set([".xlsx", ".pdf", ".pptx", ".docx", ".png", ".jpg", ".jpeg", ".svg", ".csv"]);
             if (chunk.type === "tool_result") {
               const outputsDir = path.join(config.dataDir, "outputs");
@@ -196,7 +199,6 @@ wss.on("connection", (ws: WebSocket, req) => {
                   .sort((a, b) => b.mtime - a.mtime);
                 if (files.length > 0) {
                   const latest = files[0];
-                  // Only send if file was modified in last 10 seconds and not already sent
                   if (Date.now() - latest.mtime < 10000 && !sentArtifacts.has(latest.name)) {
                     sentArtifacts.add(latest.name);
                     const ext = path.extname(latest.name).slice(1).toLowerCase();
@@ -214,8 +216,16 @@ wss.on("connection", (ws: WebSocket, req) => {
             }
           }
         }, userId);
+        activeHandle = handle;
+        await handle.promise;
+        activeHandle = null;
+      } else if (data.type === "stop") {
+        // Abort running agent
+        if (activeHandle) {
+          activeHandle.abort();
+          activeHandle = null;
+        }
       } else if (data.type === "clear") {
-        // Allow frontend to reset conversation
         clearSession(data.conversationId ? `conv-${data.conversationId}` : defaultUserId);
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: "session_cleared" }));

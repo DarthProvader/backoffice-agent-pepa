@@ -78,7 +78,7 @@ async function executeTask(task: ScheduledTask) {
   try {
     response = await handleMessage(task.prompt, () => {
       // No streaming needed for scheduled tasks
-    });
+    }).promise;
   } catch (error) {
     status = "error";
     response = error instanceof Error ? error.message : String(error);

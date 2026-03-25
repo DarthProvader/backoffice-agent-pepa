@@ -244,10 +244,52 @@ export function useWebSocket({ url, token }: UseWebSocketOptions) {
     conversationIdRef.current = crypto.randomUUID();
   }, []);
 
+  const stopGeneration = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "stop" }));
+    }
+    // Mark current message as done, or remove if empty
+    if (currentAssistantId.current) {
+      const id = currentAssistantId.current;
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.id !== id) return m;
+          // If message has no content/events, add a stopped indicator
+          const hasContent = m.events.some((e) => e.type === "text" || e.type === "tool_use");
+          // Add "stopped" results for any orphan tool_use without a following tool_result
+          const patchedEvents = [...m.events];
+          for (let i = 0; i < patchedEvents.length; i++) {
+            if (patchedEvents[i].type === "tool_use") {
+              const hasResult = i + 1 < patchedEvents.length && patchedEvents[i + 1].type === "tool_result";
+              if (!hasResult) {
+                patchedEvents.splice(i + 1, 0, {
+                  id: crypto.randomUUID(),
+                  type: "tool_result" as const,
+                  content: "Zastaveno",
+                  timestamp: new Date(),
+                });
+              }
+            }
+          }
+          if (!hasContent) {
+            return {
+              ...m,
+              isStreaming: false,
+              events: [{ id: crypto.randomUUID(), type: "text" as const, content: "*Zastaveno.*", timestamp: new Date() }],
+            };
+          }
+          return { ...m, isStreaming: false, events: patchedEvents };
+        })
+      );
+    }
+    setIsLoading(false);
+    currentAssistantId.current = null;
+  }, []);
+
   return {
     messages, isConnected, isLoading,
     activeArtifact, setActiveArtifact,
     connect, sendMessage, clearMessages,
-    loadConversation, newConversation,
+    loadConversation, newConversation, stopGeneration,
   };
 }
