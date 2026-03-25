@@ -104,7 +104,8 @@
       "Read(//tmp/**)",
       "Bash(ls -la /c/Users/vesel/AppData/Local/Temp/test_complex*)",
       "Bash(ls -la C:/tmp/test_complex*)",
-      "Bash(ls -la /c/tmp/test_complex*)"
+      "Bash(ls -la /c/tmp/test_complex*)",
+      "Bash(grep -rn \\\\[ŽáéíúůčřšžňďťÁÉÍÚČŘŠŽŇ] web/src/)"
     ],
     "additionalDirectories": [
       "C:\\PV\\Coding\\backoffice-agent-pepa\\.claude\\skills",

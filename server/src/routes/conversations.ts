@@ -1,5 +1,45 @@
 import { Router, Request, Response } from "express";
 import { listSessions, getSessionMessages } from "@anthropic-ai/claude-agent-sdk";
+import fs from "fs";
+import path from "path";
+import { config } from "../utils/config.js";
+
+const ARTIFACT_EXTS = new Set([".xlsx", ".pdf", ".pptx", ".docx", ".png", ".jpg", ".jpeg", ".svg", ".csv"]);
+
+/** Check if a tool_use block references a file in data/outputs/ and return artifact event if so */
+function detectArtifact(block: any): any | null {
+  const input = block.input || {};
+  // Write tool: file_path contains outputs
+  let filePath = input.file_path || input.fileName || "";
+  // Bash tool: command may reference outputs
+  if (!filePath && input.command) {
+    const match = input.command.match(/data\/outputs\/([^\s"']+)/);
+    if (match) filePath = path.join(config.dataDir, "outputs", match[1]);
+  }
+  if (!filePath || !filePath.includes("outputs")) return null;
+
+  const filename = path.basename(filePath);
+  const ext = path.extname(filename).toLowerCase();
+  if (!ARTIFACT_EXTS.has(ext)) return null;
+
+  // Check file exists
+  const fullPath = path.join(config.dataDir, "outputs", filename);
+  if (!fs.existsSync(fullPath)) return null;
+
+  const size = fs.statSync(fullPath).size;
+  return {
+    id: crypto.randomUUID(),
+    type: "artifact",
+    content: JSON.stringify({
+      filename,
+      filetype: ext.slice(1),
+      path: `/api/files/${encodeURIComponent(filename)}`,
+      size,
+      version: Date.now(),
+    }),
+    timestamp: new Date().toISOString(),
+  };
+}
 
 const router = Router();
 
@@ -126,6 +166,11 @@ router.get("/conversations/:id/messages", async (req: Request, res: Response) =>
               toolName: block.name,
               timestamp: new Date().toISOString(),
             });
+            // Detect artifact from Write/Bash targeting outputs
+            const artifact = detectArtifact(block);
+            if (artifact) {
+              currentAssistant.events.push(artifact);
+            }
           }
           // Skip thinking blocks
         }

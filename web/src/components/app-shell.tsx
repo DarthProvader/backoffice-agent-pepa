@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Bot,
@@ -38,13 +38,16 @@ interface AppShellProps {
   onLoadConversation?: (id: string) => void;
   onNewConversation?: () => void;
   activeConversationId?: string | null;
+  /** Increment this to trigger conversation list refresh */
+  refreshKey?: number;
 }
 
-export function AppShell({ children, onLoadConversation, onNewConversation, activeConversationId }: AppShellProps) {
+export function AppShell({ children, onLoadConversation, onNewConversation, activeConversationId, refreshKey }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const pathname = usePathname();
+  const router = useRouter();
   const { logout } = useAuth();
 
   useEffect(() => {
@@ -64,7 +67,12 @@ export function AppShell({ children, onLoadConversation, onNewConversation, acti
 
   useEffect(() => {
     fetchConversations();
-  }, [fetchConversations]);
+    // Refresh again after delay (new sessions take a moment to appear in SDK)
+    if (refreshKey && refreshKey > 0) {
+      const timer = setTimeout(fetchConversations, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [fetchConversations, refreshKey]);
 
   const toggle = () => {
     setCollapsed((prev) => {
@@ -95,8 +103,6 @@ export function AppShell({ children, onLoadConversation, onNewConversation, acti
   };
 
   if (!mounted) return null;
-
-  const isOnChatPage = pathname === "/";
 
   return (
     <div className="flex h-screen">
@@ -161,27 +167,25 @@ export function AppShell({ children, onLoadConversation, onNewConversation, acti
           })}
         </nav>
 
-        {/* Conversation history — only show on chat page */}
-        {isOnChatPage && onLoadConversation && (
+        {/* Conversation history */}
+        {conversations.length > 0 && (
           <div className="flex-1 overflow-hidden flex flex-col">
             {!collapsed && (
               <div className="px-4 py-2 flex items-center justify-between">
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Historie</span>
-                {onNewConversation && (
-                  <button
-                    onClick={onNewConversation}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                    title="Nový chat"
-                  >
-                    <Plus size={14} />
-                  </button>
-                )}
+                <button
+                  onClick={() => onNewConversation ? onNewConversation() : router.push("/")}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  title="Nový chat"
+                >
+                  <Plus size={14} />
+                </button>
               </div>
             )}
-            {collapsed && onNewConversation && (
+            {collapsed && (
               <div className="flex justify-center py-2">
                 <button
-                  onClick={onNewConversation}
+                  onClick={() => onNewConversation ? onNewConversation() : router.push("/")}
                   className="text-muted-foreground hover:text-foreground transition-colors"
                   title="Nový chat"
                 >
@@ -195,7 +199,13 @@ export function AppShell({ children, onLoadConversation, onNewConversation, acti
                 return (
                   <button
                     key={conv.id}
-                    onClick={() => onLoadConversation(conv.id)}
+                    onClick={() => {
+                      if (onLoadConversation) {
+                        onLoadConversation(conv.id);
+                      } else {
+                        router.push("/");
+                      }
+                    }}
                     title={collapsed ? conv.summary : undefined}
                     className={cn(
                       "relative w-full text-left text-xs py-1.5 transition-colors",
@@ -225,8 +235,8 @@ export function AppShell({ children, onLoadConversation, onNewConversation, acti
           </div>
         )}
 
-        {/* Spacer when not on chat page */}
-        {(!isOnChatPage || !onLoadConversation) && <div className="flex-1" />}
+        {/* Spacer when no conversations */}
+        {conversations.length === 0 && <div className="flex-1" />}
 
         {/* Footer */}
         <div className={cn(

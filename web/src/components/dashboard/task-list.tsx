@@ -182,7 +182,7 @@ export function TaskList() {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-[#888]">
         <CalendarClock className="mb-3 h-8 w-8" />
-        <span className="text-sm">\Ž\ádn\é napl\ánovan\é \úlohy</span>
+        <span className="text-sm">Žádné naplánované úlohy</span>
       </div>
     );
   }

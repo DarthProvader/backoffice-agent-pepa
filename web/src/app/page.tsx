@@ -157,13 +157,15 @@ export default function Home() {
 
   const handleLoadConversation = useCallback((id: string) => {
     setActiveConversationId(id);
+    setActiveArtifact(null);
     loadConversation(id);
-  }, [loadConversation]);
+  }, [loadConversation, setActiveArtifact]);
 
   const handleNewConversation = useCallback(() => {
     setActiveConversationId(null);
+    setActiveArtifact(null);
     newConversation();
-  }, [newConversation]);
+  }, [newConversation, setActiveArtifact]);
 
   if (authLoading) {
     return <div className="h-screen flex items-center justify-center" />;
@@ -183,6 +185,7 @@ export default function Home() {
     onLoadConversation: handleLoadConversation,
     onNewConversation: handleNewConversation,
     activeConversationId,
+    refreshKey: messages.length,
   };
 
   // Without artifact: normal layout
