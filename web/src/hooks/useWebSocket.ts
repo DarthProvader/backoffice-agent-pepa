@@ -202,5 +202,51 @@ export function useWebSocket({ url, token }: UseWebSocketOptions) {
     }
   }, []);
 
-  return { messages, isConnected, isLoading, activeArtifact, setActiveArtifact, connect, sendMessage, clearMessages };
+  const loadConversation = useCallback(async (conversationId: string) => {
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001";
+    const authToken = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    try {
+      const res = await fetch(`${API_BASE}/api/conversations/${conversationId}/messages`, {
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      // Map server messages to ChatMessage format
+      const loaded: ChatMessage[] = data.messages.map((m: any) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        timestamp: new Date(m.timestamp),
+        isStreaming: false,
+        events: (m.events || []).map((e: any) => ({
+          ...e,
+          timestamp: new Date(e.timestamp),
+        })),
+      }));
+
+      setMessages(loaded);
+      setIsLoading(false);
+      currentAssistantId.current = null;
+    } catch (err) {
+      console.error("Failed to load conversation:", err);
+    }
+  }, []);
+
+  const newConversation = useCallback(() => {
+    setMessages([]);
+    setActiveArtifact(null);
+    currentAssistantId.current = null;
+    // Tell server to start fresh session
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "clear" }));
+    }
+  }, []);
+
+  return {
+    messages, isConnected, isLoading,
+    activeArtifact, setActiveArtifact,
+    connect, sendMessage, clearMessages,
+    loadConversation, newConversation,
+  };
 }

@@ -11,6 +11,7 @@ import { startScheduler, setTaskCompleteHandler, loadTasks, getTaskResults } fro
 import { startTelegramBot, sendNotification } from "./telegram.js";
 import { generateToken, verifyToken, authMiddleware } from "./utils/auth.js";
 import dashboardRouter from "./routes/dashboard.js";
+import conversationsRouter from "./routes/conversations.js";
 
 const app = express();
 app.use(cors({ origin: true }));
@@ -37,6 +38,9 @@ app.use("/api", authMiddleware);
 
 // Dashboard routes
 app.use("/api", dashboardRouter);
+
+// Conversations routes
+app.use("/api", conversationsRouter);
 
 // One-shot chat endpoint (simple REST)
 app.post("/api/chat", async (req, res) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useAuth } from "@/hooks/useAuth";
@@ -133,7 +133,10 @@ export default function Home() {
     connect,
     sendMessage,
     clearMessages,
+    loadConversation,
+    newConversation,
   } = useWebSocket({ url: WS_URL, token });
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -152,6 +155,16 @@ export default function Home() {
     }
   }, [messages]);
 
+  const handleLoadConversation = useCallback((id: string) => {
+    setActiveConversationId(id);
+    loadConversation(id);
+  }, [loadConversation]);
+
+  const handleNewConversation = useCallback(() => {
+    setActiveConversationId(null);
+    newConversation();
+  }, [newConversation]);
+
   if (authLoading) {
     return <div className="h-screen flex items-center justify-center" />;
   }
@@ -166,10 +179,16 @@ export default function Home() {
     onArtifactClick: setActiveArtifact,
   };
 
+  const shellProps = {
+    onLoadConversation: handleLoadConversation,
+    onNewConversation: handleNewConversation,
+    activeConversationId,
+  };
+
   // Without artifact: normal layout
   if (!activeArtifact) {
     return (
-      <AppShell>
+      <AppShell {...shellProps}>
         <ChatContent {...chatProps} />
       </AppShell>
     );
@@ -177,7 +196,7 @@ export default function Home() {
 
   // With artifact: split layout
   return (
-    <AppShell>
+    <AppShell {...shellProps}>
       <ResizablePanelGroup orientation="horizontal" className="h-full">
         <ResizablePanel defaultSize={50} minSize={30}>
           <ChatContent {...chatProps} />
