@@ -189,11 +189,12 @@ function AssistantMessage({ message, onArtifactClick }: { message: ChatMessage; 
             return (
               <div
                 key={i}
-                className="prose prose-sm prose-invert max-w-none
-                  prose-p:my-1.5 prose-p:leading-relaxed
+                className="prose prose-sm prose-invert max-w-none my-2
+                  prose-p:my-2 prose-p:leading-relaxed
                   prose-headings:my-3 prose-headings:text-foreground
-                  prose-ul:my-1 prose-ol:my-1 prose-li:my-0
-                  prose-pre:my-2.5 prose-pre:bg-card prose-pre:border prose-pre:border-border
+                  prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5
+                  prose-table:my-3
+                  prose-pre:my-3 prose-pre:bg-card prose-pre:border prose-pre:border-border
                   prose-a:text-accent prose-a:no-underline hover:prose-a:underline
                   prose-strong:text-foreground prose-strong:font-semibold
                   prose-code:text-foreground/90"
@@ -212,13 +213,14 @@ function AssistantMessage({ message, onArtifactClick }: { message: ChatMessage; 
           }
           if (block.kind === "artifact") {
             return (
-              <FileCard
-                key={i}
-                filename={block.artifact.filename}
-                filetype={block.artifact.filetype}
-                size={block.artifact.size}
-                onClick={() => onArtifactClick?.({ ...block.artifact, version: Date.now() })}
-              />
+              <div key={i} className="my-3">
+                <FileCard
+                  filename={block.artifact.filename}
+                  filetype={block.artifact.filetype}
+                  size={block.artifact.size}
+                  onClick={() => onArtifactClick?.({ ...block.artifact, version: Date.now() })}
+                />
+              </div>
             );
           }
           if (block.kind === "error") {

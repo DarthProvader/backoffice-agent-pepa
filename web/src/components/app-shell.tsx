@@ -5,8 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Bot,
-  PanelLeftClose,
-  PanelLeftOpen,
   MessageSquare,
   Database,
   Clock,
@@ -17,8 +15,6 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { apiFetch } from "@/lib/api";
-
-const STORAGE_KEY = "sidebar_collapsed";
 
 const navItems = [
   { label: "Chat", path: "/", icon: MessageSquare },
@@ -38,12 +34,10 @@ interface AppShellProps {
   onLoadConversation?: (id: string) => void;
   onNewConversation?: () => void;
   activeConversationId?: string | null;
-  /** Increment this to trigger conversation list refresh */
   refreshKey?: number;
 }
 
 export function AppShell({ children, onLoadConversation, onNewConversation, activeConversationId, refreshKey }: AppShellProps) {
-  const [collapsed, setCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const pathname = usePathname();
@@ -51,14 +45,9 @@ export function AppShell({ children, onLoadConversation, onNewConversation, acti
   const { logout } = useAuth();
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored !== null) {
-      setCollapsed(stored === "true");
-    }
     setMounted(true);
   }, []);
 
-  // Fetch conversations
   const fetchConversations = useCallback(() => {
     apiFetch<Conversation[]>("/api/conversations")
       .then(setConversations)
@@ -67,20 +56,11 @@ export function AppShell({ children, onLoadConversation, onNewConversation, acti
 
   useEffect(() => {
     fetchConversations();
-    // Refresh again after delay (new sessions take a moment to appear in SDK)
     if (refreshKey && refreshKey > 0) {
       const timer = setTimeout(fetchConversations, 3000);
       return () => clearTimeout(timer);
     }
   }, [fetchConversations, refreshKey]);
-
-  const toggle = () => {
-    setCollapsed((prev) => {
-      const next = !prev;
-      localStorage.setItem(STORAGE_KEY, String(next));
-      return next;
-    });
-  };
 
   const isActive = (path: string) => {
     if (path === "/") return pathname === "/";
@@ -106,36 +86,18 @@ export function AppShell({ children, onLoadConversation, onNewConversation, acti
 
   return (
     <div className="flex h-screen">
-      <aside
-        className={cn(
-          "flex flex-col h-screen bg-card border-r border-border transition-all duration-200 shrink-0",
-          collapsed ? "w-14" : "w-[206px]"
-        )}
-      >
+      <aside className="flex flex-col h-screen w-[258px] bg-card border-r border-border shrink-0">
         {/* Header */}
-        <div className={cn(
-          "flex items-center",
-          collapsed ? "justify-center py-3" : "px-4 gap-2 py-3"
-        )}>
+        <div className="flex items-center px-4 gap-2 py-3">
+          <Bot size={18} className="text-accent shrink-0" />
+          <span className="text-sm font-semibold text-foreground">Pepa</span>
           <button
-            onClick={toggle}
-            className="flex items-center justify-center w-8 h-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors shrink-0"
-            title={collapsed ? "Rozbalit" : "Sbalit"}
+            onClick={logout}
+            className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
+            title="Odhlásit se"
           >
-            {collapsed ? (
-              <PanelLeftOpen size={18} />
-            ) : (
-              <PanelLeftClose size={18} />
-            )}
+            <LogOut size={16} />
           </button>
-          {!collapsed && (
-            <div className="flex items-center gap-2 overflow-hidden">
-              <Bot size={18} className="text-accent shrink-0" />
-              <span className="text-sm font-semibold text-foreground truncate">
-                Pepa
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Navigation */}
@@ -146,10 +108,8 @@ export function AppShell({ children, onLoadConversation, onNewConversation, acti
               <Link
                 key={item.path}
                 href={item.path}
-                title={collapsed ? item.label : undefined}
                 className={cn(
-                  "relative flex items-center py-2 text-sm transition-colors",
-                  collapsed ? "justify-center" : "px-4 gap-3",
+                  "relative flex items-center px-4 gap-3 py-2 text-sm transition-colors",
                   active
                     ? "bg-muted text-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
@@ -159,9 +119,7 @@ export function AppShell({ children, onLoadConversation, onNewConversation, acti
                   <span className="absolute left-0 top-1 bottom-1 w-0.5 bg-accent rounded-r" />
                 )}
                 <item.icon size={18} className="shrink-0" />
-                {!collapsed && (
-                  <span className="truncate">{item.label}</span>
-                )}
+                <span className="truncate">{item.label}</span>
               </Link>
             );
           })}
@@ -170,29 +128,16 @@ export function AppShell({ children, onLoadConversation, onNewConversation, acti
         {/* Conversation history */}
         {conversations.length > 0 && (
           <div className="flex-1 overflow-hidden flex flex-col">
-            {!collapsed && (
-              <div className="px-4 py-2 flex items-center justify-between">
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Historie</span>
-                <button
-                  onClick={() => onNewConversation ? onNewConversation() : router.push("/")}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                  title="Nový chat"
-                >
-                  <Plus size={14} />
-                </button>
-              </div>
-            )}
-            {collapsed && (
-              <div className="flex justify-center py-2">
-                <button
-                  onClick={() => onNewConversation ? onNewConversation() : router.push("/")}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                  title="Nový chat"
-                >
-                  <Plus size={16} />
-                </button>
-              </div>
-            )}
+            <div className="px-4 py-2 flex items-center justify-between">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Historie</span>
+              <button
+                onClick={() => onNewConversation ? onNewConversation() : router.push("/")}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                title="Nový chat"
+              >
+                <Plus size={14} />
+              </button>
+            </div>
             <div className="flex-1 overflow-y-auto">
               {conversations.map((conv) => {
                 const isActiveConv = activeConversationId === conv.id;
@@ -206,10 +151,8 @@ export function AppShell({ children, onLoadConversation, onNewConversation, acti
                         router.push("/");
                       }
                     }}
-                    title={collapsed ? conv.summary : undefined}
                     className={cn(
-                      "relative w-full text-left text-xs py-1.5 transition-colors",
-                      collapsed ? "flex justify-center" : "px-4 flex items-center gap-2",
+                      "relative w-full text-left text-xs py-1.5 px-4 flex items-center gap-2 transition-colors",
                       isActiveConv
                         ? "text-foreground bg-muted"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
@@ -218,16 +161,10 @@ export function AppShell({ children, onLoadConversation, onNewConversation, acti
                     {isActiveConv && (
                       <span className="absolute left-0 top-1 bottom-1 w-0.5 bg-accent rounded-r" />
                     )}
-                    {collapsed ? (
-                      <MessageSquare size={14} className={isActiveConv ? "text-accent" : ""} />
-                    ) : (
-                      <>
-                        <span className="truncate flex-1">{conv.summary}</span>
-                        <span className="text-[10px] text-muted-foreground/60 shrink-0">
-                          {formatRelativeDate(conv.createdAt)}
-                        </span>
-                      </>
-                    )}
+                    <span className="truncate flex-1">{conv.summary}</span>
+                    <span className="text-[10px] text-muted-foreground/60 shrink-0">
+                      {formatRelativeDate(conv.createdAt)}
+                    </span>
                   </button>
                 );
               })}
@@ -238,23 +175,6 @@ export function AppShell({ children, onLoadConversation, onNewConversation, acti
         {/* Spacer when no conversations */}
         {conversations.length === 0 && <div className="flex-1" />}
 
-        {/* Footer */}
-        <div className={cn(
-          "mt-auto pb-7",
-          collapsed ? "flex justify-center" : "px-4"
-        )}>
-          <button
-            onClick={logout}
-            title={collapsed ? "Odhlásit se" : undefined}
-            className={cn(
-              "flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors",
-              collapsed ? "justify-center" : "gap-3 w-full"
-            )}
-          >
-            <LogOut size={18} className="shrink-0" />
-            {!collapsed && <span>Odhlásit se</span>}
-          </button>
-        </div>
       </aside>
 
       <main className="flex-1 h-screen overflow-hidden">{children}</main>

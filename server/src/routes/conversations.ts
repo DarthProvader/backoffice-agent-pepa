@@ -166,11 +166,6 @@ router.get("/conversations/:id/messages", async (req: Request, res: Response) =>
               toolName: block.name,
               timestamp: new Date().toISOString(),
             });
-            // Detect artifact from Write/Bash targeting outputs
-            const artifact = detectArtifact(block);
-            if (artifact) {
-              currentAssistant.events.push(artifact);
-            }
           }
           // Skip thinking blocks
         }
@@ -180,6 +175,38 @@ router.get("/conversations/:id/messages", async (req: Request, res: Response) =>
     // Flush last assistant
     if (currentAssistant) {
       messages.push(currentAssistant);
+    }
+
+    // Post-process: scan assistant text for artifact references (data/outputs/filename.ext)
+    const artifactsSeen = new Set<string>();
+    for (const msg of messages) {
+      if (msg.role !== "assistant") continue;
+      const text = msg.content;
+      // Match patterns like data/outputs/filename.ext or /data/outputs/filename.ext
+      const regex = /(?:\/?)data\/outputs\/([^\s"'`,)]+)/g;
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        const filename = match[1];
+        if (artifactsSeen.has(filename)) continue;
+        const ext = path.extname(filename).toLowerCase();
+        if (!ARTIFACT_EXTS.has(ext)) continue;
+        const fullPath = path.join(config.dataDir, "outputs", filename);
+        if (!fs.existsSync(fullPath)) continue;
+        artifactsSeen.add(filename);
+        const size = fs.statSync(fullPath).size;
+        msg.events.push({
+          id: crypto.randomUUID(),
+          type: "artifact",
+          content: JSON.stringify({
+            filename,
+            filetype: ext.slice(1),
+            path: `/api/files/${encodeURIComponent(filename)}`,
+            size,
+            version: Date.now(),
+          }),
+          timestamp: new Date().toISOString(),
+        });
+      }
     }
 
     res.json({ messages });

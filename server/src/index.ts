@@ -178,15 +178,14 @@ wss.on("connection", (ws: WebSocket, req) => {
     try {
       const data = JSON.parse(raw.toString());
       if (data.type === "chat" && data.content) {
+        const sentArtifacts = new Set<string>(); // Track artifacts already sent in this message
         await handleMessage(data.content, (chunk) => {
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify(chunk));
 
-            // Detect artifact: any chunk mentioning outputs/ with a known file extension
+            // Detect artifact: check outputs dir after every tool_result (agent may have created a file)
             const ARTIFACT_EXTS = new Set([".xlsx", ".pdf", ".pptx", ".docx", ".png", ".jpg", ".jpeg", ".svg", ".csv"]);
-            const chunkContent = chunk.content || "";
-            const mentionsOutputs = chunkContent.includes("outputs") || chunkContent.includes("output");
-            if ((chunk.type === "tool_result" || chunk.type === "tool_use" || chunk.type === "text") && mentionsOutputs) {
+            if (chunk.type === "tool_result") {
               const outputsDir = path.join(config.dataDir, "outputs");
               try {
                 const files = fs.readdirSync(outputsDir)
@@ -195,8 +194,9 @@ wss.on("connection", (ws: WebSocket, req) => {
                   .sort((a, b) => b.mtime - a.mtime);
                 if (files.length > 0) {
                   const latest = files[0];
-                  // Only send if file was modified in last 10 seconds (freshly created)
-                  if (Date.now() - latest.mtime < 10000) {
+                  // Only send if file was modified in last 10 seconds and not already sent
+                  if (Date.now() - latest.mtime < 10000 && !sentArtifacts.has(latest.name)) {
+                    sentArtifacts.add(latest.name);
                     const ext = path.extname(latest.name).slice(1).toLowerCase();
                     const size = fs.statSync(path.join(outputsDir, latest.name)).size;
                     ws.send(JSON.stringify({
