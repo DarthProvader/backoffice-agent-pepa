@@ -183,6 +183,12 @@ wss.on("connection", (ws: WebSocket, req) => {
       if (data.type === "chat" && data.content) {
         // Use conversationId from client as stable userId (survives WS reconnects)
         const userId = data.conversationId ? `conv-${data.conversationId}` : defaultUserId;
+        // If client sends a resumeSessionId, pre-seed the sessions map
+        // so handleMessage can resume the correct SDK session
+        if (data.resumeSessionId) {
+          const { setSessionId } = await import("./agent.js");
+          setSessionId(userId, data.resumeSessionId);
+        }
         const sentArtifacts = new Set<string>();
         const handle = handleMessage(data.content, (chunk) => {
           if (ws.readyState === WebSocket.OPEN) {

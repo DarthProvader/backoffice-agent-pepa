@@ -154,6 +154,19 @@ export default function Home() {
     if (token) connect();
   }, [token, connect]);
 
+  // Restore active conversation on mount (e.g. after navigating back from dashboard)
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (messages.length === 0 && isConnected && !restoredRef.current) {
+      restoredRef.current = true;
+      const savedId = localStorage.getItem("active_conversation_id");
+      if (savedId) {
+        setActiveConversationId(savedId);
+        loadConversation(savedId);
+      }
+    }
+  }, [isConnected, messages.length, loadConversation]);
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;

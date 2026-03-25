@@ -42,7 +42,13 @@ export function useWebSocket({ url, token }: UseWebSocketOptions) {
   const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const currentAssistantId = useRef<string | null>(null);
-  const conversationIdRef = useRef<string>(crypto.randomUUID());
+  const conversationIdRef = useRef<string>(
+    (typeof window !== "undefined" && localStorage.getItem("active_conversation_id")) || crypto.randomUUID()
+  );
+  // SDK session ID for resuming loaded conversations
+  const resumeSessionIdRef = useRef<string | null>(
+    (typeof window !== "undefined" && localStorage.getItem("resume_session_id")) || null
+  );
 
   const appendEvent = useCallback(
     (event: StreamEvent, alsoAppendText?: boolean) => {
@@ -190,7 +196,13 @@ export function useWebSocket({ url, token }: UseWebSocketOptions) {
       setMessages((prev) => [...prev, userMsg, assistantMsg]);
       setIsLoading(true);
 
-      wsRef.current.send(JSON.stringify({ type: "chat", content, conversationId: conversationIdRef.current }));
+      localStorage.setItem("active_conversation_id", conversationIdRef.current);
+      wsRef.current.send(JSON.stringify({
+        type: "chat",
+        content,
+        conversationId: conversationIdRef.current,
+        resumeSessionId: resumeSessionIdRef.current || undefined,
+      }));
     },
     []
   );
@@ -204,7 +216,11 @@ export function useWebSocket({ url, token }: UseWebSocketOptions) {
   }, []);
 
   const loadConversation = useCallback(async (conversationId: string) => {
-    // Set conversationId so subsequent messages resume this session
+    // conversationId from /api/conversations IS the SDK session ID
+    // Keep our own conversationIdRef but tell server to resume this SDK session
+    resumeSessionIdRef.current = conversationId;
+    localStorage.setItem("active_conversation_id", conversationId);
+    localStorage.setItem("resume_session_id", conversationId);
     conversationIdRef.current = conversationId;
     const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001";
     const authToken = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
@@ -241,7 +257,11 @@ export function useWebSocket({ url, token }: UseWebSocketOptions) {
     setActiveArtifact(null);
     currentAssistantId.current = null;
     // New conversation = new ID
-    conversationIdRef.current = crypto.randomUUID();
+    const newId = crypto.randomUUID();
+    conversationIdRef.current = newId;
+    resumeSessionIdRef.current = null;
+    localStorage.setItem("active_conversation_id", newId);
+    localStorage.removeItem("resume_session_id");
   }, []);
 
   const stopGeneration = useCallback(() => {

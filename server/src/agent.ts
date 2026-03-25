@@ -23,6 +23,10 @@ export function clearSession(userId: string) {
   sessions.delete(userId);
 }
 
+export function setSessionId(userId: string, sessionId: string) {
+  sessions.set(userId, sessionId);
+}
+
 export function handleMessage(
   userMessage: string,
   onChunk: (chunk: AgentChunk) => void,
