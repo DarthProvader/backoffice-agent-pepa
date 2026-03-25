@@ -26,7 +26,7 @@ router.get("/conversations", async (_req: Request, res: Response) => {
 // GET /api/conversations/:id/messages — get messages for a session
 router.get("/conversations/:id/messages", async (req: Request, res: Response) => {
   try {
-    const sessionId = req.params.id;
+    const sessionId = req.params.id as string;
     const sdkMessages = await getSessionMessages(sessionId);
 
     // Map SDK messages to our frontend format

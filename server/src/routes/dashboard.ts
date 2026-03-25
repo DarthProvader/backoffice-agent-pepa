@@ -43,7 +43,7 @@ function getDb() {
 
 // GET /api/dashboard/tables/:table
 router.get("/dashboard/tables/:table", (req: Request, res: Response) => {
-  const table = req.params.table;
+  const table = req.params.table as string;
   if (!TABLE_SEARCH_COLUMNS[table]) {
     res.status(400).json({ error: `Neplatná tabulka: ${table}` });
     return;
@@ -60,8 +60,8 @@ router.get("/dashboard/tables/:table", (req: Request, res: Response) => {
     let where = "";
     const params: string[] = [];
     if (search) {
-      const searchCols = TABLE_SEARCH_COLUMNS[table];
-      const conditions = searchCols.map((col) => `${col} LIKE ?`);
+      const searchCols = TABLE_SEARCH_COLUMNS[table as string];
+      const conditions = searchCols.map((col: string) => `${col} LIKE ?`);
       where = `WHERE ${conditions.join(" OR ")}`;
       for (let i = 0; i < searchCols.length; i++) {
         params.push(`%${search}%`);
@@ -173,7 +173,7 @@ router.get("/files", (_req: Request, res: Response) => {
 
 // DELETE /api/files/:name
 router.delete("/files/:name", (req: Request, res: Response) => {
-  const filename = req.params.name;
+  const filename = req.params.name as string;
   if (filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
     res.status(400).json({ error: "Neplatný název souboru" });
     return;
