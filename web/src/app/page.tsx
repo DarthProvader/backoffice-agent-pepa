@@ -21,10 +21,12 @@ const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001/ws";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001";
 
 const SUGGESTIONS = [
-  "Jaké nové klienty máme za 1. kvartál?",
-  "Vytvoř Excel report klientů za Q1 2026",
-  "Které nemovitosti mají chybějící data o rekonstrukci?",
-  "Připrav prezentaci se 3 slidy o výsledcích firmy",
+  "Jaké nové klienty máme za 1. kvartál? Odkud přišli? Můžeš to znázornit graficky?",
+  "Vytvoř graf vývoje počtu leadů a prodaných nemovitostí za posledních 6 měsíců.",
+  "Napiš e-mail pro zájemce o nemovitost a doporuč mu termín prohlídky na základě mé dostupnosti v kalendáři.",
+  "Najdi nemovitosti, u kterých nám chybí data o rekonstrukci a připrav jejich seznam k doplnění.",
+  "Shrň výsledky minulého týdne do krátkého reportu pro vedení a připrav k tomu prezentaci se třemi slidy.",
+  "Sleduj všechny hlavní realitní servery a každé ráno mě informuj o nových nabídkách v lokalitě Praha Holešovice.",
 ];
 
 function ChatContent({
@@ -87,7 +89,7 @@ function ChatContent({
               Jsem tvůj back office asistent. Zeptej se mě na klienty,
               nemovitosti, leady, reporty nebo cokoliv dalšího.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 w-full max-w-3xl">
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s}
