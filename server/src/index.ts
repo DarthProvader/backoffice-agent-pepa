@@ -216,7 +216,7 @@ wss.on("connection", (ws: WebSocket, req) => {
         }, userId);
       } else if (data.type === "clear") {
         // Allow frontend to reset conversation
-        clearSession(userId);
+        clearSession(data.conversationId ? `conv-${data.conversationId}` : defaultUserId);
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: "session_cleared" }));
         }
