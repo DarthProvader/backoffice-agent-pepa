@@ -25,7 +25,7 @@ const STAT_CARDS: StatCard[] = [
   { key: "properties", label: "Nemovitosti", icon: Building2 },
   { key: "leads", label: "Leady", icon: Target },
   { key: "sales", label: "Prodeje", icon: HandCoins },
-  { key: "viewings", label: "Prohl\ídky", icon: Eye },
+  { key: "viewings", label: "Prohlídky", icon: Eye },
 ];
 
 export function StatsBar() {
@@ -60,7 +60,7 @@ export function StatsBar() {
   if (error) {
     return (
       <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
-        Nepoda\řilo se na\č\íst statistiky: {error}
+        Nepodařilo se načíst statistiky: {error}
       </div>
     );
   }

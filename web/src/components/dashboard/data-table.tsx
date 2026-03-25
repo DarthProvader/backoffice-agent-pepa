@@ -20,8 +20,8 @@ const TABS = [
   { key: "properties", label: "Nemovitosti" },
   { key: "leads", label: "Leady" },
   { key: "sales", label: "Prodeje" },
-  { key: "viewings", label: "Prohl\ídky" },
-  { key: "listing_snapshots", label: "Inzer\áty" },
+  { key: "viewings", label: "Prohlídky" },
+  { key: "listing_snapshots", label: "Inzeráty" },
 ] as const;
 
 type TableName = (typeof TABS)[number]["key"];
@@ -109,7 +109,7 @@ export function DataTable() {
       <div className="overflow-x-auto">
         {loading ? (
           <div className="flex items-center justify-center py-16 text-sm text-[#888]">
-            Na\č\ít\án\í...
+            Načítání...
           </div>
         ) : error ? (
           <div className="flex items-center justify-center py-16 text-sm text-red-400">
@@ -117,7 +117,7 @@ export function DataTable() {
           </div>
         ) : !data || data.rows.length === 0 ? (
           <div className="flex items-center justify-center py-16 text-sm text-[#888]">
-            \Ž\ádn\á data
+            Žádná data
           </div>
         ) : (
           <table className="w-full">

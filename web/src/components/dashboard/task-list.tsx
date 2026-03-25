@@ -165,7 +165,7 @@ export function TaskList() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16 text-sm text-[#888]">
-        Na\č\ít\án\í...
+        Načítání...
       </div>
     );
   }
@@ -173,7 +173,7 @@ export function TaskList() {
   if (error) {
     return (
       <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
-        Nepoda\řilo se na\č\íst \úlohy: {error}
+        Nepodařilo se načíst úlohy: {error}
       </div>
     );
   }
@@ -208,7 +208,7 @@ export function TaskList() {
                     : "bg-[#222] text-[#888]"
                 )}
               >
-                {task.enabled ? "Aktivn\í" : "Pozastaveno"}
+                {task.enabled ? "Aktivní" : "Pozastaveno"}
               </span>
             </div>
 
@@ -236,7 +236,7 @@ export function TaskList() {
                     {formatDate(task.lastRunAt)}
                   </>
                 ) : (
-                  "Zat\ím nespu\št\ěno"
+                  "Zatím nespuštěno"
                 )}
               </span>
             </div>

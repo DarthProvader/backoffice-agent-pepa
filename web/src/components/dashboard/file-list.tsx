@@ -147,7 +147,7 @@ export function FileList() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16 text-sm text-[#888]">
-        Na\č\ít\án\í...
+        Načítání...
       </div>
     );
   }
@@ -155,7 +155,7 @@ export function FileList() {
   if (error) {
     return (
       <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
-        Nepoda\řilo se na\č\íst soubory: {error}
+        Nepodařilo se načíst soubory: {error}
       </div>
     );
   }
@@ -164,7 +164,7 @@ export function FileList() {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-[#888]">
         <FolderOpen className="mb-3 h-8 w-8" />
-        <span className="text-sm">\Ž\ádn\é vygenerovan\é soubory</span>
+        <span className="text-sm">Žádné vygenerované soubory</span>
       </div>
     );
   }
@@ -212,7 +212,7 @@ export function FileList() {
                 variant="ghost"
                 size="sm"
                 onClick={() => handleDownload(file)}
-                title="St\áhnout"
+                title="Stáhnout"
               >
                 <Download className="h-3.5 w-3.5" />
               </Button>
