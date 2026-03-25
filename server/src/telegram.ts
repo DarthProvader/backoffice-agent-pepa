@@ -111,9 +111,11 @@ export function startTelegramBot() {
 export async function sendNotification(message: string) {
   if (!bot) return;
 
+  console.log(`[Telegram] Sending notification to ${notifyChatIds.size} targets: ${[...notifyChatIds].join(", ")}`);
   for (const chatId of notifyChatIds) {
     try {
       await sendLongMessageById(chatId, message);
+      console.log(`[Telegram] Sent to ${chatId}`);
     } catch (error) {
       console.error(`[Telegram] Failed to send to ${chatId}:`, error);
     }
