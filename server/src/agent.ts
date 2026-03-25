@@ -37,7 +37,7 @@ Odpovídej vždy česky. Databáze je v ${config.dataDir}/backoffice.db.
 Vygenerované soubory ukládej do ${config.dataDir}/outputs/.
 Dnešní datum: ${new Date().toLocaleDateString("cs-CZ", { day: "numeric", month: "long", year: "numeric" })}.
 Python s nainstalovanými knihovnami (openpyxl, pandas, python-pptx, reportlab, pypdf, python-docx, Pillow, matplotlib): ${config.projectRoot}/.venv/Scripts/python
-PPTX prezentace: použij Node.js knihovnu pptxgenjs (v ~/node_modules/pptxgenjs). Spusť přes: node skript.js
+PPTX prezentace: použij Node.js knihovnu pptxgenjs (globálně nainstalovaná). Ve skriptu importuj: const pptxgen = require('pptxgenjs');
 NEINSTALUJ žádné Python ani npm balíčky — vše je již nainstalováno.
 PŘIPOMÍNKY A OPAKOVANÉ ÚLOHY: NIKDY nepoužívej sleep, CronCreate ani jiné session-only nástroje. VŽDY zapiš task do ${config.dataDir}/scheduled-tasks/tasks.json — přečti soubor, přidej nový task, zapiš zpět. Server automaticky detekuje změny a spustí task v daný čas.
 `,

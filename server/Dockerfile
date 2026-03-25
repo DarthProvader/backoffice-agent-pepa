@@ -12,8 +12,8 @@ RUN apt-get update && apt-get install -y \
 RUN curl -fsSL https://bun.sh/install | bash
 ENV PATH="/root/.bun/bin:$PATH"
 
-# Install Claude Code CLI (needed by Agent SDK)
-RUN npm install -g @anthropic-ai/claude-code
+# Install Claude Code CLI (needed by Agent SDK) + pptxgenjs for presentations
+RUN npm install -g @anthropic-ai/claude-code pptxgenjs
 
 WORKDIR /app
 
