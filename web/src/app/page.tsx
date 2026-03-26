@@ -162,7 +162,12 @@ export default function Home() {
       const savedId = localStorage.getItem("active_conversation_id");
       if (savedId) {
         setActiveConversationId(savedId);
-        loadConversation(savedId);
+        loadConversation(savedId).catch(() => {
+          // Session doesn't exist (e.g. different server) — clear stale ID
+          localStorage.removeItem("active_conversation_id");
+          localStorage.removeItem("resume_session_id");
+          setActiveConversationId(null);
+        });
       }
     }
   }, [isConnected, messages.length, loadConversation]);

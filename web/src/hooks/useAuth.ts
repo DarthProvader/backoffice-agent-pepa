@@ -57,6 +57,8 @@ export function useAuth() {
 
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem("active_conversation_id");
+    localStorage.removeItem("resume_session_id");
     setToken(null);
     router.push("/login");
   }, [router]);
