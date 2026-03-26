@@ -145,6 +145,9 @@ export function AppShell({ children, onLoadConversation, onNewConversation, acti
                   <button
                     key={conv.id}
                     onClick={() => {
+                      // Always save to localStorage first so restore effect picks up the right ID
+                      localStorage.setItem("active_conversation_id", conv.id);
+                      localStorage.setItem("resume_session_id", conv.id);
                       if (onLoadConversation) {
                         onLoadConversation(conv.id);
                       } else {

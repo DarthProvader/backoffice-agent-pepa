@@ -14,7 +14,7 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
-import { Bot, Trash2, Wifi, WifiOff } from "lucide-react";
+import { Bot, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001/ws";
@@ -179,6 +179,9 @@ export default function Home() {
   }, [messages]);
 
   const handleLoadConversation = useCallback((id: string) => {
+    // Pre-save to localStorage so restore effect doesn't override
+    localStorage.setItem("active_conversation_id", id);
+    restoredRef.current = true;
     setActiveConversationId(id);
     setActiveArtifact(null);
     loadConversation(id);
