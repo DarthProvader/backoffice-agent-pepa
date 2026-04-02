@@ -109,13 +109,15 @@
       "Bash(ls -la data/outputs/prehled*)",
       "Bash(cat data/task-results/pripominka*)",
       "mcp__playwright__browser_wait_for",
-      "mcp__playwright__browser_type"
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_run_code"
     ],
     "additionalDirectories": [
       "C:\\PV\\Coding\\backoffice-agent-pepa\\.claude\\skills",
       "c:\\Users\\vesel\\.claude\\projects\\c--PV-Coding-backoffice-agent-pepa\\memory",
       "C:\\PV\\Coding\\backoffice-agent-pepa\\web\\src\\components\\dashboard",
-      "c:\\tmp"
+      "c:\\tmp",
+      "c:\\PV\\Coding\\backoffice-agent-pepa"
     ]
   }
 }

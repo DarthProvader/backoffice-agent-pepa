@@ -249,6 +249,12 @@ export function useWebSocket({ url, token }: UseWebSocketOptions) {
       currentAssistantId.current = null;
     } catch (err) {
       console.error("Failed to load conversation:", err);
+      // Clear all stale refs so next message starts fresh
+      resumeSessionIdRef.current = null;
+      localStorage.removeItem("resume_session_id");
+      const freshId = crypto.randomUUID();
+      conversationIdRef.current = freshId;
+      localStorage.setItem("active_conversation_id", freshId);
     }
   }, []);
 

@@ -66,6 +66,9 @@ docs/
 # SSH keys
 .ssh/
 
+# Playwright MCP temp files
+.playwright-mcp/
+
 # Misc
 .vercel
 .turbo
