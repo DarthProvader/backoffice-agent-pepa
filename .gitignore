@@ -53,6 +53,12 @@ video-ideas.txt
 
 # Python venv
 .venv/
+__pycache__/
+*.pyc
+
+# Claude Code local settings (lokální cesty, povolené příkazy, IP serveru)
+.claude/settings.json
+.claude/settings.local.json
 
 # Anthropic document skills (proprietární licence)
 .claude/skills/xlsx/
