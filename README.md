@@ -1,56 +1,56 @@
-# Back Office Operations Agent („Pepa")
+# Back Office Operations Agent ("Pepa")
 
-AI asistent pro back office realitní firmy. Postavený nad **Claude Agent SDK** — místo pevně naprogramovaných databázových nástrojů agent zná schéma databáze a **píše si vlastní SQL, Python a shell příkazy** podle toho, co uživatel potřebuje.
+An AI assistant for the back office of a real estate company. Built on the **Claude Agent SDK** — instead of hard-coded database tools, the agent knows the database schema and **writes its own SQL, Python and shell commands** based on what the user needs.
 
-Vznikl jako řešení zadané výzvy: navrhnout systém, který převezme významnou část práce back office manažera („Pepy") — dotazy nad daty, reporty, e-maily, plánování prohlídek a monitoring trhu.
+It was built as a solution to a given challenge: design a system that takes over a significant part of a back office manager's ("Pepa's") work — querying data, generating reports, writing emails, scheduling viewings and monitoring the market.
 
-> **Poznámka k datům:** Databáze obsahuje výhradně **synteticky generovaná** testovací data (náhodná jména, adresy, ceny). Žádná reálná firemní ani osobní data.
-
----
-
-## Co agent umí
-
-Všechny scénáře ze zadání jsou funkční a otestované:
-
-| Požadavek | Jak to agent řeší |
-|-----------|-------------------|
-| „Jaké nové klienty máme za Q1? Odkud přišli? Znázorni to graficky." | Napíše si SQL dotaz, spočítá rozpad podle zdroje, vygeneruje graf přes matplotlib |
-| „Vytvoř graf vývoje leadů a prodejů za posledních 6 měsíců." | Agreguje data po měsících, vrátí graf + tabulku |
-| „Napiš e-mail zájemci a navrhni termín prohlídky podle mé dostupnosti." | Zkontroluje Google Calendar, najde volné sloty, připraví návrh e-mailu (neodešle bez potvrzení) |
-| „Najdi nemovitosti s chybějícími daty o rekonstrukci a připrav seznam k doplnění." | Dotáže se na `NULL` hodnoty, vrátí přehled a doporučí další krok |
-| „Shrň výsledky týdne do reportu a připrav prezentaci se 3 slidy." | Vygeneruje Excel/PDF report i PPTX prezentaci |
-| „Sleduj realitní servery a každé ráno mě informuj o nových nabídkách v Holešovicích." | Zapíše naplánovanou úlohu, cron ji spouští, výsledky posílá na Telegram |
+> **Note on data:** The database contains exclusively **synthetically generated** test data (random names, addresses, prices). No real company or personal data.
 
 ---
 
-## Architektura
+## What the agent can do
+
+All scenarios from the challenge are functional and tested:
+
+| Request | How the agent handles it |
+|---------|--------------------------|
+| "How many new clients did we get in Q1? Where did they come from? Show it visually." | Writes its own SQL query, computes the breakdown by source, generates a chart via matplotlib |
+| "Create a chart of lead and sale trends over the last 6 months." | Aggregates data by month, returns a chart + table |
+| "Write an email to a prospect and suggest a viewing time based on my availability." | Checks Google Calendar, finds free slots, drafts the email (never sends without confirmation) |
+| "Find properties with missing renovation data and prepare a list to complete." | Queries for `NULL` values, returns an overview and recommends next steps |
+| "Summarize this week's results into a report and prepare a 3-slide presentation." | Generates an Excel/PDF report as well as a PPTX presentation |
+| "Monitor real estate portals and notify me every morning about new listings in Holešovice." | Registers a scheduled task, cron runs it, results are sent to Telegram |
+
+---
+
+## Architecture
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌──────────────┐
-│  Web (Next) │     │  Telegram   │     │  Cron / plán │
-│  chat + UI  │     │     bot     │     │    úlohy     │
+│  Web (Next) │     │  Telegram   │     │ Cron / tasks │
+│  chat + UI  │     │     bot     │     │  (schedule)  │
 └──────┬──────┘     └──────┬──────┘     └──────┬───────┘
        │                   │                   │
        └───────────────────┼───────────────────┘
                            ▼
-                  handleMessage()  ◄── jeden vstupní bod
+                  handleMessage()  ◄── single entry point
                            │
                   Claude Agent SDK (query)
                            │
         ┌──────────────────┼──────────────────┐
         ▼                  ▼                  ▼
-   Bash / SQL        Python skripty      Skilly (.claude)
+   Bash / SQL        Python scripts     Skills (.claude)
    (SQLite)          (Gmail, Calendar,   (backoffice, google,
-                      dokumenty)          xlsx/pptx/pdf/docx)
+                      documents)          xlsx/pptx/pdf/docx)
 ```
 
-### Klíčová designová rozhodnutí
+### Key design decisions
 
-- **Jeden vstupní bod** — web, Telegram i cron volají stejnou funkci `handleMessage()` ([server/src/agent.ts](server/src/agent.ts)). Žádná duplikace logiky.
-- **Agent si píše vlastní SQL** — žádné custom „get_clients" nástroje. Agent dostane přes [SKILL.md](.claude/skills/backoffice/SKILL.md) schéma databáze a použije `sqlite3` CLI přímo. Flexibilní na jakýkoli dotaz bez psaní nových endpointů.
-- **Skilly jako znalostní balíčky** — instrukce, DB schéma a formátovací pravidla žijí v `.claude/skills/`, ne v kódu. Agent je načítá progresivně podle kontextu.
-- **Plánování bez session-only nástrojů** — místo `CronCreate` (funguje jen v rámci jedné session) agent zapisuje úlohy do `data/scheduled-tasks/tasks.json`; server soubor sleduje (`fs.watchFile`) a registruje cron joby ([server/src/scheduler.ts](server/src/scheduler.ts)).
-- **Detekce artefaktů** — když agent vygeneruje soubor do `data/outputs/`, backend to zachytí a přes WebSocket pošle frontendu, který ho zobrazí v náhledovém panelu.
+- **Single entry point** — web, Telegram and cron all call the same `handleMessage()` function ([server/src/agent.ts](server/src/agent.ts)). No duplicated logic.
+- **The agent writes its own SQL** — no custom "get_clients" tools. Via [SKILL.md](.claude/skills/backoffice/SKILL.md) the agent receives the database schema and uses the `sqlite3` CLI directly. Flexible for any query without writing new endpoints.
+- **Skills as knowledge packages** — instructions, the DB schema and formatting rules live in `.claude/skills/`, not in the code. The agent loads them progressively based on context.
+- **Scheduling without session-only tools** — instead of `CronCreate` (which only works within a single session) the agent writes tasks to `data/scheduled-tasks/tasks.json`; the server watches the file (`fs.watchFile`) and registers cron jobs ([server/src/scheduler.ts](server/src/scheduler.ts)).
+- **Artifact detection** — when the agent generates a file into `data/outputs/`, the backend catches it and pushes it to the frontend over WebSocket, which displays it in a preview panel.
 
 ---
 
@@ -58,79 +58,79 @@ Všechny scénáře ze zadání jsou funkční a otestované:
 
 **Backend** ([server/](server/))
 - Bun + TypeScript, Express + `ws` (WebSocket streaming)
-- `@anthropic-ai/claude-agent-sdk` — jádro agenta
-- SQLite (`better-sqlite3` pro seed/statistiky; agent dotazuje přes `sqlite3` CLI)
+- `@anthropic-ai/claude-agent-sdk` — the core of the agent
+- SQLite (`better-sqlite3` for seeding/statistics; the agent queries via the `sqlite3` CLI)
 - grammY (Telegram bot), node-cron (scheduler), JWT auth
 
-**Frontend** ([web/](web/)) — nasazeno na Vercelu
+**Frontend** ([web/](web/)) — deployed on Vercel
 - Next.js 16, React 19, Tailwind CSS v4
-- Chat se streamováním v Claude Code stylu (tool cally inline jako rozbalovací karty)
-- Recharts, náhledy dokumentů: react-pdf (PDF), SheetJS (XLSX), mammoth.js (DOCX)
-- Dashboard: přehled dat, správa úloh, správa souborů
+- Claude Code-style streaming chat (tool calls shown inline as collapsible cards)
+- Recharts, document previews: react-pdf (PDF), SheetJS (XLSX), mammoth.js (DOCX)
+- Dashboard: data overview, task management, file management
 
-**Integrace & dokumenty**
-- Google Gmail + Calendar přes Python skripty ([scripts/](scripts/))
-- Generování xlsx / pptx / pdf / docx (Python + pptxgenjs)
+**Integrations & documents**
+- Google Gmail + Calendar via Python scripts ([scripts/](scripts/))
+- Generation of xlsx / pptx / pdf / docx (Python + pptxgenjs)
 
 **Deployment**
-- Backend v Dockeru na VPS, Caddy reverse proxy s automatickým SSL
-- Frontend na Vercelu
+- Backend in Docker on a VPS, Caddy reverse proxy with automatic SSL
+- Frontend on Vercel
 
 ---
 
-## Struktura repozitáře
+## Repository structure
 
 ```
 server/          Backend — Express, WebSocket, agent, scheduler, Telegram bot
-  src/agent.ts     Obálka nad Claude Agent SDK (jeden vstupní bod)
-  src/index.ts     HTTP + WebSocket server, file serving, artifact detekce
-  src/scheduler.ts node-cron scheduler čtoucí tasks.json
-  src/telegram.ts  grammY bot + notifikace
-web/             Frontend — Next.js chat, dashboard, náhledy dokumentů
-scripts/         Python skripty pro Gmail a Google Calendar
-.claude/skills/  Skilly agenta (backoffice, google)
-data/            SQLite DB, výstupy, úlohy (generováno, není v gitu)
+  src/agent.ts     Wrapper around the Claude Agent SDK (single entry point)
+  src/index.ts     HTTP + WebSocket server, file serving, artifact detection
+  src/scheduler.ts node-cron scheduler reading tasks.json
+  src/telegram.ts  grammY bot + notifications
+web/             Frontend — Next.js chat, dashboard, document previews
+scripts/         Python scripts for Gmail and Google Calendar
+.claude/skills/  Agent skills (backoffice, google)
+data/            SQLite DB, outputs, tasks (generated, not in git)
 ```
 
-> Skilly pro generování dokumentů (`xlsx`, `pptx`, `pdf`, `docx`) pocházejí z [anthropics/skills](https://github.com/anthropics/skills) a nejsou součástí tohoto repozitáře kvůli jejich licenci.
+> The document-generation skills (`xlsx`, `pptx`, `pdf`, `docx`) come from [anthropics/skills](https://github.com/anthropics/skills) and are not included in this repository due to their license.
 
 ---
 
-## Lokální spuštění
+## Running locally
 
-**Předpoklady:** [Bun](https://bun.sh), Python 3.11+, přístup ke Claude (Claude Code auth nebo `ANTHROPIC_API_KEY`).
+**Prerequisites:** [Bun](https://bun.sh), Python 3.11+, access to Claude (Claude Code auth or `ANTHROPIC_API_KEY`).
 
 ```bash
 # 1. Backend
 cd server
 bun install
-cp ../.env.example .env        # doplň hodnoty (viz níže)
-bun run seed                   # naplní SQLite syntetickými daty
-bun run dev                    # server na http://localhost:3001
+cp ../.env.example .env        # fill in the values (see below)
+bun run seed                   # populate SQLite with synthetic data
+bun run dev                    # server at http://localhost:3001
 
-# 2. Frontend (druhý terminál)
+# 2. Frontend (second terminal)
 cd web
 bun install
-bun run dev                    # web na http://localhost:3000
+bun run dev                    # web at http://localhost:3000
 ```
 
-### Konfigurace (`server/.env`)
+### Configuration (`server/.env`)
 
-Vzor viz [.env.example](.env.example). Minimum pro lokální běh:
+See [.env.example](.env.example) for a template. Minimum for a local run:
 
-| Proměnná | Popis |
-|----------|-------|
-| `ANTHROPIC_API_KEY` | Volitelné — když prázdné, použije se Claude Code auth |
-| `AUTH_USERNAME` / `AUTH_PASSWORD` | Přihlášení do webového UI |
-| `AUTH_JWT_SECRET` | Náhodný řetězec pro podpis JWT |
-| `TELEGRAM_BOT_TOKEN` | Volitelné — pro Telegram bota |
-| `GOOGLE_CLIENT_ID` / `SECRET` / `REFRESH_TOKEN` | Volitelné — pro Gmail a Calendar |
+| Variable | Description |
+|----------|-------------|
+| `ANTHROPIC_API_KEY` | Optional — if empty, Claude Code auth is used |
+| `AUTH_USERNAME` / `AUTH_PASSWORD` | Login for the web UI |
+| `AUTH_JWT_SECRET` | Random string for signing JWTs |
+| `TELEGRAM_BOT_TOKEN` | Optional — for the Telegram bot |
+| `GOOGLE_CLIENT_ID` / `SECRET` / `REFRESH_TOKEN` | Optional — for Gmail and Calendar |
 
-Žádné reálné klíče nejsou v repozitáři — vše se načítá z `.env`, který je v `.gitignore`.
+No real keys are in the repository — everything is loaded from `.env`, which is in `.gitignore`.
 
 ---
 
-## Databázové schéma
+## Database schema
 
-SQLite, tabulky: `clients`, `properties`, `leads`, `sales`, `viewings`, `listing_snapshots`.
-Kompletní schéma a příklady dotazů viz [.claude/skills/backoffice/SKILL.md](.claude/skills/backoffice/SKILL.md).
+SQLite, tables: `clients`, `properties`, `leads`, `sales`, `viewings`, `listing_snapshots`.
+For the full schema and example queries see [.claude/skills/backoffice/SKILL.md](.claude/skills/backoffice/SKILL.md).
